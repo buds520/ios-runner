@@ -24,8 +24,18 @@ ios-runner install-zed-tasks
 ## 使用
 
 1. **File → Open Folder** 打开含 `.xcodeproj` / `.xcworkspace` 的目录（CocoaPods 先 `pod install`）
-2. `Cmd+Shift+P` → **task spawn** → 选 **iOS-Runner: Setup Project**（首次）
-3. 再选 **iOS-Runner: Run**
+2. 一次性：`ios-runner install-zed-tasks`（写入全局任务 + **快捷键**，见 [docs/ZED_UX.md](docs/ZED_UX.md)）
+3. **Cmd+Shift+E** 初始化工程（首次）→ **Cmd+Shift+I** 选设备 → **Cmd+Shift+R** 运行  
+
+不用每次 `task: spawn` 搜索；也可在 **Run** 面板直接点任务。
+
+**说明**：任务结束后若看到 `Command: /bin/zsh -i -c '/bin/zsh'`，那是 Zed 自带的任务摘要（不是报错）。新版任务已关闭该摘要；若仍出现，请执行 `ios-runner install-zed-tasks` 更新全局任务。
+
+**真机**：若 iPhone 锁屏，请先解锁并保持亮屏；失败时会提示解锁/信任/开发者模式，而不是只显示 devicectl 英文错误。
+
+**终端语言**：在 `~/.config/ios-runner/config.toml` 的 `[defaults]` 里设 `language = "en"`，或 `export IOS_RUNNER_LANG=en`。详见 [docs/ZED_UX.md](docs/ZED_UX.md)。
+
+**不改工程**：配置默认保存在 `~/.config/ios-runner/config.toml`，不写入 `.ios-runner.toml`（除非设置 `IOS_RUNNER_LOCAL_CONFIG=1`）。
 
 ---
 

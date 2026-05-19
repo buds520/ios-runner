@@ -7,3 +7,6 @@ derived_data = ".ios-runner/DerivedData"
 xcbeautify = true
 resolve_packages_before_build = true
 bring_simulator_to_foreground = true
+
+# Terminal messages: zh-CN (default) or en. Override: env IOS_RUNNER_LANG=en
+language = "zh-CN"

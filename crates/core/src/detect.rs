@@ -4,6 +4,7 @@ use anyhow::{Context, Result, bail};
 use walkdir::WalkDir;
 
 use crate::config::{ProjectKind, RunnerConfig};
+use crate::global_store::{global_derived_data_path, load_global_file};
 use crate::xcodebuild::{default_simulator_destination, list_schemes};
 
 #[derive(Debug, Clone)]
@@ -115,11 +116,22 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerCon
         scheme,
         configuration: "Debug".to_string(),
         destination,
-        derived_data: ".ios-runner/DerivedData".to_string(),
-        xcbeautify: true,
-        resolve_packages_before_build: true,
-        bring_simulator_to_foreground: true,
+        derived_data: global_derived_data_path(root)?
+            .to_string_lossy()
+            .to_string(),
+        xcbeautify: load_global_file().map(|f| f.defaults.xcbeautify).unwrap_or(true),
+        resolve_packages_before_build: load_global_file()
+            .map(|f| f.defaults.resolve_packages_before_build)
+            .unwrap_or(true),
+        bring_simulator_to_foreground: load_global_file()
+            .map(|f| f.defaults.bring_simulator_to_foreground)
+            .unwrap_or(true),
         development_team: None,
+        language: std::env::var("IOS_RUNNER_LANG").unwrap_or_else(|_| {
+            load_global_file()
+                .map(|f| f.defaults.language)
+                .unwrap_or_else(|_| "zh-CN".to_string())
+        }),
     })
 }
 

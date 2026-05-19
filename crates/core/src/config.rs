@@ -29,6 +29,13 @@ pub struct RunnerConfig {
     /// Apple Developer Team ID (required for physical device builds).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub development_team: Option<String>,
+    /// Terminal messages: `zh-CN` (default) or `en`. Override with env `IOS_RUNNER_LANG`.
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "zh-CN".to_string()
 }
 
 fn default_resolve_packages() -> bool {
@@ -51,10 +58,16 @@ impl RunnerConfig {
     pub const FILE_NAME: &'static str = ".ios-runner.toml";
     const LEGACY_FILE_NAME: &'static str = ".xcode-pilot.toml";
 
+    /// Prefer global `~/.config/ios-runner/config.toml`; see `global_store::load_config`.
     pub fn load(root: &Path) -> Result<Self> {
-        let path = config_path(root)?;
+        crate::global_store::load_config(root)
+    }
+
+    /// Read legacy project-local config only.
+    pub fn load_local(root: &Path) -> Result<Self> {
+        let path = local_config_path(root)?;
         let text = std::fs::read_to_string(&path)
-            .with_context(|| format!("missing config; run `ios-runner init` ({})", path.display()))?;
+            .with_context(|| format!("read {}", path.display()))?;
         let mut config: RunnerConfig = toml::from_str(&text).context("parse ios-runner config")?;
         config.normalize();
         Ok(config)
@@ -77,20 +90,37 @@ impl RunnerConfig {
         }
     }
 
-    pub fn save(&self, root: &Path) -> Result<()> {
+    /// Save to global config; optionally mirror to `.ios-runner.toml` if `IOS_RUNNER_LOCAL_CONFIG=1`.
+    pub fn save(&self, root: &Path) -> Result<PathBuf> {
+        let path = crate::global_store::save_config(root, self)?;
+        if crate::global_store::should_write_local_config() {
+            self.save_local(root)?;
+        }
+        Ok(path)
+    }
+
+    pub fn save_local(&self, root: &Path) -> Result<()> {
         let mut config = self.clone();
         config.normalize();
         let path = root.join(Self::FILE_NAME);
         let text = toml::to_string_pretty(&config).context("serialize config")?;
-        std::fs::write(&path, text).with_context(|| format!("write {}", path.display()))
+        std::fs::write(&path, text).with_context(|| format!("write {}", path.display()))?;
+        Ok(())
     }
 
     pub fn device_summary(&self) -> String {
+        use crate::locale::t;
         let name = destination_name(&self.destination).unwrap_or_else(|| "?".into());
         if self.destination.contains("Simulator") {
-            format!("模拟器 {name}")
+            format!("{} {name}", t("模拟器", "Simulator"))
         } else {
-            format!("真机 {name}")
+            format!("{} {name}", t("真机", "Device"))
+        }
+    }
+
+    pub fn apply_locale(&self) {
+        if std::env::var("IOS_RUNNER_LANG").is_err() {
+            crate::locale::set_lang(crate::locale::Lang::parse(&self.language));
         }
     }
 
@@ -98,8 +128,8 @@ impl RunnerConfig {
         root.join(&self.path)
     }
 
-    pub fn derived_data_path(&self, root: &Path) -> PathBuf {
-        root.join(&self.derived_data)
+    pub fn derived_data_path(&self, _root: &Path) -> PathBuf {
+        PathBuf::from(&self.derived_data)
     }
 
     pub fn validate(&self, root: &Path) -> Result<()> {
@@ -119,7 +149,7 @@ fn destination_name(destination: &str) -> Option<String> {
     })
 }
 
-fn config_path(root: &Path) -> Result<PathBuf> {
+fn local_config_path(root: &Path) -> Result<PathBuf> {
     let primary = root.join(RunnerConfig::FILE_NAME);
     if primary.is_file() {
         return Ok(primary);
@@ -128,5 +158,11 @@ fn config_path(root: &Path) -> Result<PathBuf> {
     if legacy.is_file() {
         return Ok(legacy);
     }
-    Ok(primary)
+    bail!(
+        "{}",
+        crate::locale::t(
+            "缺少 .ios-runner.toml",
+            "missing .ios-runner.toml",
+        )
+    )
 }

@@ -44,7 +44,7 @@ pub fn run_mcp() -> Result<()> {
             "tools/list" => json!({
                 "tools": [
                     tool_desc("ios_runner_detect", "Detect Xcode/CocoaPods project in workspace"),
-                    tool_desc("ios_runner_setup", "Write .ios-runner.toml and .zed/tasks.json (idempotent)"),
+                    tool_desc("ios_runner_setup", "Save project settings to ~/.config/ios-runner (idempotent)"),
                     tool_desc("ios_runner_build", "Build the iOS app with xcodebuild"),
                     tool_desc("ios_runner_run", "Build, install on simulator, and launch"),
                 ]
@@ -122,12 +122,13 @@ fn auto_setup(root: &PathBuf) -> String {
                     r.scheme, r.destination
                 )];
                 if r.wrote_config {
-                    parts.push("created .ios-runner.toml".to_string());
+                    parts.push(format!(
+                        "saved global config {}",
+                        r.global_config.display()
+                    ));
                 }
                 if r.wrote_tasks {
-                    parts.push(
-                        "created .zed/tasks.json — use task「iOS-Runner: Run」or bind cmd-r".to_string(),
-                    );
+                    parts.push("created .zed/tasks.json (optional)".to_string());
                 }
                 if r.has_podfile {
                     parts.push("Podfile detected: run「iOS-Runner: Pod Install」if needed".to_string());

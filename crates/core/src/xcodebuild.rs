@@ -9,8 +9,10 @@ use crate::build_settings::launch_artifacts;
 use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
 use crate::destination::{device_udid_from_destination, is_simulator_destination};
+use crate::device::{ensure_device_ready, report_devicectl_failure};
 use crate::simulator::udid_for_destination_name;
-use crate::terminal_ui::{hint_xcbeautify, info, section, success};
+use crate::locale::t;
+use crate::terminal_ui::{hint_xcbeautify, info, section, success, warn};
 
 pub fn list_schemes(root: &Path, project: &DetectedProject) -> Result<Vec<String>> {
     let mut cmd = Command::new("xcodebuild");
@@ -91,13 +93,13 @@ pub fn resolve_packages(root: &Path, config: &RunnerConfig) -> Result<()> {
 
 pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
     section(
-        "编译",
+        t("编译", "Build"),
         Some(&format!("{} · {}", config.scheme, config.device_summary())),
     );
     hint_xcbeautify();
 
     if config.resolve_packages_before_build {
-        info("解析 Swift Package…");
+        info(t("解析 Swift Package…", "Resolving Swift packages…"));
         let _ = resolve_packages_quiet(root, config);
     }
 
@@ -128,20 +130,28 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
         run_xcodebuild_piped(cmd, root)
     } else {
         if raw_logs {
-            info("完整 xcodebuild 日志（IOS_RUNNER_RAW_LOG=1）");
+            info(t(
+                "完整 xcodebuild 日志（IOS_RUNNER_RAW_LOG=1）",
+                "Full xcodebuild log (IOS_RUNNER_RAW_LOG=1)",
+            ));
         }
         run_command(cmd, root, "build")
     };
     if result.is_ok() {
-        success("✓ 编译成功");
+        success(t("✓ 编译成功", "✓ Build succeeded"));
     }
     if let Err(e) = &result {
         if !is_simulator_destination(&config.destination) {
             anyhow::bail!(
-                "{e}\n\n\
-                 真机构建需要代码签名：\n\
-                 1. 用 Xcode 打开工程 → Target → Signing & Capabilities → 选择 Team\n\
-                 2. 或在 .ios-runner.toml 增加：development_team = \"你的TeamID\""
+                "{e}\n\n{}",
+                t(
+                    "真机构建需要代码签名：\n\
+                     1. 用 Xcode 打开工程 → Target → Signing & Capabilities → 选择 Team\n\
+                     2. 或在全局配置 ~/.config/ios-runner/config.toml 为该工程设置 development_team",
+                    "Device builds require code signing:\n\
+                     1. Open the project in Xcode → Target → Signing & Capabilities → select a Team\n\
+                     2. Or set development_team in ~/.config/ios-runner/config.toml for this project",
+                )
             );
         }
     }
@@ -183,10 +193,13 @@ pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
     }
 
     section(
-        "应用日志",
-        Some("点击 App 内按钮，输出会显示在下方 · Ctrl+C 结束"),
+        t("应用日志", "App log"),
+        Some(t(
+            "点击 App 内按钮，输出会显示在下方 · Ctrl+C 结束",
+            "Tap buttons in the app to see output below · Ctrl+C to stop",
+        )),
     );
-    info(&format!("启动 {bundle_id}"));
+    info(&format!("{} {bundle_id}", t("启动", "Launch")));
     let status = Command::new("xcrun")
         .args([
             "simctl",
@@ -205,7 +218,7 @@ pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
         bail!("simctl launch failed");
     }
 
-    success(&format!("✓ 已启动（模拟器）"));
+    success(t("✓ 已启动（模拟器）", "✓ Launched on simulator"));
     Ok(())
 }
 
@@ -219,31 +232,41 @@ pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
         .context("app path is not valid UTF-8")?;
     let bundle_id = artifacts.bundle_identifier;
     let device_id = device_udid_from_destination(&config.destination)?;
+    ensure_device_ready(&device_id)?;
 
-    section("安装到真机", Some(&config.device_summary()));
-    info(&format!("设备安装 {device_id}"));
-    let status = Command::new("xcrun")
-        .args([
-            "devicectl",
-            "device",
-            "install",
-            "app",
-            "--device",
-            &device_id,
-            app_path,
-        ])
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .context("devicectl install")?;
-    if !status.success() {
-        bail!("devicectl install failed (check signing & trust on device)");
+    section(
+        t("安装到真机", "Install on device"),
+        Some(&config.device_summary()),
+    );
+    info(&format!(
+        "{} {device_id}",
+        t("设备安装", "Installing on device"),
+    ));
+    let install = run_devicectl(&[
+        "device",
+        "install",
+        "app",
+        "--device",
+        &device_id,
+        app_path,
+    ])?;
+    if !install.status.success() {
+        let stderr = String::from_utf8_lossy(&install.stderr);
+        let stdout = String::from_utf8_lossy(&install.stdout);
+        if !stderr.trim().is_empty() {
+            info(stderr.trim());
+        }
+        report_devicectl_failure(t("安装到真机", "Install on device"), &stderr, &stdout)?;
     }
 
-    section("应用日志", Some("Ctrl+C 结束"));
-    info(&format!("启动 {bundle_id}"));
-    let status = Command::new("xcrun")
+    ensure_device_ready(&device_id)?;
+
+    section(
+        t("应用日志", "App log"),
+        Some(t("Ctrl+C 结束", "Ctrl+C to stop")),
+    );
+    info(&format!("{} {bundle_id}", t("启动", "Launch")));
+    let launch_status = Command::new("xcrun")
         .args([
             "devicectl",
             "device",
@@ -260,12 +283,32 @@ pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
         .stderr(Stdio::inherit())
         .status()
         .context("devicectl launch")?;
-    if !status.success() {
-        bail!("devicectl launch failed");
+    if !launch_status.success() {
+        let _ = ensure_device_ready(&device_id);
+        warn_device_launch_hints();
+        bail!("{}", t("启动应用失败", "Failed to launch app"));
     }
 
-    success("✓ 已启动（真机）");
+    success(t("✓ 已启动（真机）", "✓ Launched on device"));
     Ok(())
+}
+
+fn run_devicectl(args: &[&str]) -> Result<std::process::Output> {
+    Command::new("xcrun")
+        .arg("devicectl")
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .context("devicectl")
+}
+
+fn warn_device_launch_hints() {
+    warn(t(
+        "若 iPhone 已锁屏，请先解锁并保持亮屏；确认已在手机上信任此 Mac，且已开启「开发者模式」。",
+        "If the iPhone is locked, unlock it and keep the screen on; trust this Mac and enable Developer Mode.",
+    ));
 }
 
 fn resolve_packages_quiet(root: &Path, config: &RunnerConfig) -> Result<()> {
@@ -349,7 +392,7 @@ fn which_xcbeautify() -> bool {
 
 /// Pipe xcodebuild stdout/stderr through xcbeautify (SweetPad default when installed).
 fn run_xcodebuild_piped(mut cmd: Command, root: &Path) -> Result<()> {
-    info("xcodebuild → xcbeautify");
+    info(t("xcodebuild → xcbeautify", "xcodebuild → xcbeautify"));
 
     cmd.current_dir(root)
         .stdout(Stdio::piped())

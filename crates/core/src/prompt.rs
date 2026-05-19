@@ -2,13 +2,21 @@ use std::io::{self, Write};
 
 use anyhow::{Context, Result, bail};
 
+use crate::locale::t;
+
 /// Numbered menu on stderr; returns selected index.
 pub fn pick_one(title: &str, options: &[String]) -> Result<usize> {
     if options.is_empty() {
-        bail!("没有可选项");
+        bail!("{}", t("没有可选项", "No options available"));
     }
     if options.len() == 1 {
-        eprintln!("{title}：{}（仅此一项）", options[0]);
+        eprintln!(
+            "{}",
+            crate::locale::tf(
+                || format!("{title}：{}（仅此一项）", options[0]),
+                || format!("{title}: {} (only option)", options[0]),
+            )
+        );
         return Ok(0);
     }
 
@@ -17,7 +25,13 @@ pub fn pick_one(title: &str, options: &[String]) -> Result<usize> {
     for (i, opt) in options.iter().enumerate() {
         eprintln!("  {:>2}. {}", i + 1, opt);
     }
-    eprint!("请输入编号 [1-{}]：", options.len());
+    eprint!(
+        "{}",
+        crate::locale::tf(
+            || format!("请输入编号 [1-{}]：", options.len()),
+            || format!("Enter number [1-{}]: ", options.len()),
+        )
+    );
     io::stderr().flush().ok();
 
     let mut line = String::new();
@@ -27,10 +41,18 @@ pub fn pick_one(title: &str, options: &[String]) -> Result<usize> {
     let choice: usize = line
         .trim()
         .parse()
-        .with_context(|| format!("无效编号: {line:?}"))?;
+        .with_context(|| {
+            format!(
+                "{}",
+                crate::locale::tf(
+                    || format!("无效编号: {line:?}"),
+                    || format!("Invalid number: {line:?}"),
+                )
+            )
+        })?;
 
     if choice == 0 || choice > options.len() {
-        bail!("编号超出范围");
+        bail!("{}", t("编号超出范围", "Number out of range"));
     }
     Ok(choice - 1)
 }

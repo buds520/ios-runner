@@ -42,7 +42,10 @@ pub fn hint_xcbeautify() {
     if which_xcbeautify() {
         return;
     }
-    warn("提示: 安装 xcbeautify 可美化编译日志 → brew install xcbeautify");
+    warn(crate::locale::t(
+        "提示: 安装 xcbeautify 可美化编译日志 → brew install xcbeautify",
+        "Tip: install xcbeautify for prettier build logs → brew install xcbeautify",
+    ));
 }
 
 fn which_xcbeautify() -> bool {

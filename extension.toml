@@ -1,6 +1,6 @@
 id = "ios-runner"
 name = "iOS-Runner"
-version = "0.1.0"
+version = "0.2.0"
 schema_version = 1
 authors = ["buds520"]
 description = "Build and run iOS Xcode projects in Zed using xcodebuild. Auto-detects .xcodeproj and CocoaPods workspaces, generates project tasks, and supports simulator launch. Requires macOS, Xcode, and the ios-runner CLI."

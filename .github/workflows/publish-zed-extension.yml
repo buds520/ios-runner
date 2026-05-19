@@ -1,0 +1,95 @@
+# After a version tag is pushed, update buds520/extensions (Zed marketplace review PR).
+name: Publish Zed Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semver without v (e.g. 0.2.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  update-extensions-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout ios-runner at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
+          fetch-depth: 0
+
+      - name: Checkout extensions fork
+        uses: actions/checkout@v4
+        with:
+          repository: buds520/extensions
+          token: ${{ secrets.EXTENSIONS_DEPLOY_TOKEN }}
+          path: extensions-repo
+          fetch-depth: 1
+
+      - name: Update submodule and extensions.toml
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          TAG: v${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd extensions-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin add-ios-runner
+          git checkout add-ios-runner
+
+          git submodule update --init extensions/ios-runner
+          cd extensions/ios-runner
+          git fetch origin tag "$TAG" 2>/dev/null || git fetch origin
+          git checkout "$TAG"
+          SHA="$(git rev-parse HEAD)"
+          cd ../..
+
+          git add extensions/ios-runner
+          if grep -q '^\[ios-runner\]' extensions.toml; then
+            sed -i "/^\[ios-runner\]/,/^\[/ s/^version = .*/version = \"${VERSION}\"/" extensions.toml
+          else
+            echo "::error::[ios-runner] missing in extensions.toml"
+            exit 1
+          fi
+          git add extensions.toml
+
+          if git diff --staged --quiet; then
+            echo "No changes for extensions PR"
+            exit 0
+          fi
+
+          git commit -m "chore(ios-runner): bump to ${VERSION} (${SHA:0:7})"
+          git push origin add-ios-runner
+
+      - name: Comment on marketplace PR
+        env:
+          GH_TOKEN: ${{ secrets.EXTENSIONS_DEPLOY_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          TAG: v${{ steps.ver.outputs.version }}
+        run: |
+          SHA="$(git -C extensions-repo/extensions/ios-runner rev-parse HEAD)"
+          gh pr comment 6145 --repo zed-industries/extensions --body "$(cat <<EOF
+          ## iOS-Runner ${VERSION}
+
+          - Submodule: \`${SHA}\` ([release ${TAG}](https://github.com/buds520/ios-runner/releases/tag/${TAG}))
+          - Marketplace \`extensions.toml\` version: \`${VERSION}\`
+
+          _Updated by [ios-runner publish workflow](https://github.com/buds520/ios-runner/actions)._
+          EOF
+          )"

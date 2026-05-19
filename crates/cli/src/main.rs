@@ -6,8 +6,8 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use ios_runner_core::{
     RunnerConfig, build_project, configure_project, detect_project, ensure_project,
-    install_global_zed_tasks, list_run_destinations, list_schemes, list_simulators,
-    resolve_packages, run_app,
+    init_locale, install_global_zed_keymap, install_global_zed_tasks, list_run_destinations,
+    list_schemes, list_simulators, resolve_packages, run_app, t,
 };
 
 mod mcp;
@@ -62,6 +62,7 @@ enum Commands {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let root = workspace_root()?;
+    init_locale(Some(&root));
 
     match cli.command {
         Commands::Doctor => cmd_doctor(&root),
@@ -73,19 +74,16 @@ fn main() -> Result<()> {
         Commands::InstallZedTasks => cmd_install_zed_tasks(),
         Commands::Build { verbose } => {
             set_verbose_logs(verbose);
-            let config = RunnerConfig::load(&root)?;
-            config.validate(&root)?;
+            let config = load_config(&root)?;
             build_project(&root, &config)
         }
         Commands::Run { verbose } => {
             set_verbose_logs(verbose);
-            let config = RunnerConfig::load(&root)?;
-            config.validate(&root)?;
+            let config = load_config(&root)?;
             run_app(&root, &config)
         }
         Commands::ResolvePackages => {
-            let config = RunnerConfig::load(&root)?;
-            config.validate(&root)?;
+            let config = load_config(&root)?;
             resolve_packages(&root, &config)
         }
         Commands::List { what } => cmd_list(&root, &what),
@@ -96,6 +94,13 @@ fn workspace_root() -> Result<PathBuf> {
     env::current_dir().context("current directory")
 }
 
+fn load_config(root: &PathBuf) -> Result<RunnerConfig> {
+    let config = RunnerConfig::load(root)?;
+    config.apply_locale();
+    config.validate(root)?;
+    Ok(config)
+}
+
 fn set_verbose_logs(verbose: bool) {
     if verbose {
         std::env::set_var("IOS_RUNNER_RAW_LOG", "1");
@@ -103,9 +108,33 @@ fn set_verbose_logs(verbose: bool) {
 }
 
 fn cmd_install_zed_tasks() -> Result<()> {
-    let path = install_global_zed_tasks()?;
-    eprintln!("✓ iOS-Runner 任务已写入 {}", path.display());
-    eprintln!("  重新打开 Zed 或任意工程，Run 面板应出现 iOS-Runner 任务。");
+    let tasks = install_global_zed_tasks()?;
+    let keymap = install_global_zed_keymap()?;
+    eprintln!(
+        "{} {}",
+        t("✓ iOS-Runner 任务已写入", "✓ Wrote iOS-Runner tasks to"),
+        tasks.display()
+    );
+    eprintln!(
+        "{} {}",
+        t("✓ 快捷键已写入", "✓ Wrote keybindings to"),
+        keymap.display()
+    );
+    eprintln!("{}", t("  重启 Zed 后可用：", "  Restart Zed, then use:"));
+    eprintln!(
+        "{}",
+        t(
+            "    Cmd+Shift+R  运行   Cmd+Shift+B  编译",
+            "    Cmd+Shift+R  Run   Cmd+Shift+B  Build",
+        )
+    );
+    eprintln!(
+        "{}",
+        t(
+            "    Cmd+Shift+I  选设备 Cmd+Shift+E  初始化工程",
+            "    Cmd+Shift+I  Device   Cmd+Shift+E  Setup",
+        )
+    );
     Ok(())
 }
 
@@ -191,13 +220,33 @@ fn cmd_init(root: &PathBuf, pick: bool) -> Result<()> {
 
 fn cmd_init_ensure(root: &PathBuf) -> Result<()> {
     let report = ensure_project(root)?;
+    if let Ok(config) = RunnerConfig::load(root) {
+        config.apply_locale();
+    }
     if report.wrote_config || report.wrote_tasks {
-        eprintln!("iOS-Runner configured for this project.");
+        eprintln!(
+            "{}",
+            t(
+                "iOS-Runner configured for this project.",
+                "iOS-Runner configured for this project.",
+            )
+        );
     } else {
-        eprintln!("iOS-Runner: already configured. Use `ios-runner configure` to change scheme/simulator.");
+        eprintln!(
+            "{}",
+            t(
+                "iOS-Runner: already configured. Use `ios-runner configure` to change scheme/simulator.",
+                "iOS-Runner: already configured. Use `ios-runner configure` to change scheme/device.",
+            )
+        );
     }
     eprintln!("  scheme: {}", report.scheme);
     eprintln!("  dest:   {}", report.destination);
+    eprintln!(
+        "  {}: {}",
+        t("全局配置", "Global config"),
+        report.global_config.display()
+    );
     Ok(())
 }
 
@@ -214,8 +263,13 @@ fn cmd_configure(root: &PathBuf, run: bool, no_run: bool) -> Result<()> {
 }
 
 fn print_config_summary(config: &RunnerConfig, has_podfile: bool) {
-    eprintln!("  Wrote {}", RunnerConfig::FILE_NAME);
-    eprintln!("  Wrote .zed/tasks.json");
+    if let Ok(path) = ios_runner_core::config_file_path() {
+        eprintln!(
+            "  {}: {}",
+            t("全局配置", "Global config"),
+            path.display()
+        );
+    }
     eprintln!("  scheme: {}", config.scheme);
     eprintln!("  path:   {}", config.path);
     eprintln!("  dest:   {}", config.destination);

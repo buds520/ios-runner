@@ -3,17 +3,20 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde_json::Value;
 
-use crate::tasks::shell_task;
+use crate::bootstrap::lang_for_task_script;
+use crate::tasks::shell_task_with_lang;
 
 const TASK_LABEL_PREFIX: &str = "iOS-Runner:";
 
 /// Default Zed tasks (work in any iOS project via `$ZED_WORKTREE_ROOT`).
 pub fn default_task_list() -> Vec<serde_json::Value> {
+    let lang = lang_for_task_script(None);
+    let st = |label, sub| shell_task_with_lang(label, sub, lang);
     vec![
-        shell_task("iOS-Runner: Setup Project", "ensure"),
-        shell_task("iOS-Runner: Run", "run"),
-        shell_task("iOS-Runner: Select Scheme & Device", "configure --run"),
-        shell_task("iOS-Runner: Build", "build"),
+        st("iOS-Runner: Setup Project", "ensure"),
+        st("iOS-Runner: Run", "run"),
+        st("iOS-Runner: Select Scheme & Device", "configure --run"),
+        st("iOS-Runner: Build", "build"),
     ]
 }
 

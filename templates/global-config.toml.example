@@ -1,0 +1,16 @@
+# Copy to ~/.config/ios-runner/config.toml
+# Per-project entries are added automatically by `ios-runner ensure` / `configure`.
+
+[defaults]
+language = "zh-CN"   # or "en"
+xcbeautify = true
+resolve_packages_before_build = true
+bring_simulator_to_foreground = true
+
+# Example (auto-managed; paths are absolute project roots):
+# [projects."/Users/you/MyApp"]
+# kind = "workspace"
+# path = "MyApp.xcworkspace"
+# scheme = "MyApp"
+# destination = "platform=iOS Simulator,name=iPhone 17 Pro"
+# development_team = "ABCDE12345"

@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 
 use crate::detect::DetectedProject;
+use crate::locale::t;
 use crate::xcodebuild::add_project_args;
 
 /// A build/run target from `xcodebuild -showdestinations`.
@@ -26,16 +27,16 @@ pub enum DestinationKind {
 impl RunDestination {
     pub fn menu_label(&self) -> String {
         let tag = match self.kind {
-            DestinationKind::Simulator => "模拟器",
-            DestinationKind::Device => "真机",
+            DestinationKind::Simulator => t("模拟器", "Simulator"),
+            DestinationKind::Device => t("真机", "Device"),
         };
         format!("[{tag}] {}", self.name)
     }
 
     pub fn summary_line(&self) -> String {
         match self.kind {
-            DestinationKind::Simulator => format!("模拟器 · {}", self.name),
-            DestinationKind::Device => format!("真机 · {}", self.name),
+            DestinationKind::Simulator => format!("{} · {}", t("模拟器", "Simulator"), self.name),
+            DestinationKind::Device => format!("{} · {}", t("真机", "Device"), self.name),
         }
     }
 }
