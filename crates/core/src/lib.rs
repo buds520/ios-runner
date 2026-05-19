@@ -5,7 +5,7 @@ mod ensure;
 mod tasks;
 mod xcodebuild;
 
-pub use config::PilotConfig;
+pub use config::RunnerConfig;
 pub use detect::{DetectedProject, create_config, detect_project};
 pub use ensure::{EnsureReport, ensure_project};
 pub use tasks::write_zed_tasks;

@@ -11,7 +11,7 @@ pub enum ProjectKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PilotConfig {
+pub struct RunnerConfig {
     pub kind: ProjectKind,
     pub path: String,
     pub scheme: String,
@@ -20,13 +20,10 @@ pub struct PilotConfig {
     pub destination: String,
     #[serde(default = "default_derived_data")]
     pub derived_data: String,
-    /// Pipe build output through `xcbeautify` when installed (see SweetPad).
     #[serde(default)]
     pub xcbeautify: bool,
-    /// Run `xcodebuild -resolvePackageDependencies` before each build.
     #[serde(default = "default_resolve_packages")]
     pub resolve_packages_before_build: bool,
-    /// `open -a Simulator` before install (SweetPad default).
     #[serde(default = "default_true")]
     pub bring_simulator_to_foreground: bool,
 }
@@ -44,17 +41,18 @@ fn default_configuration() -> String {
 }
 
 fn default_derived_data() -> String {
-    ".xcode-pilot/DerivedData".to_string()
+    ".ios-runner/DerivedData".to_string()
 }
 
-impl PilotConfig {
-    pub const FILE_NAME: &'static str = ".xcode-pilot.toml";
+impl RunnerConfig {
+    pub const FILE_NAME: &'static str = ".ios-runner.toml";
+    const LEGACY_FILE_NAME: &'static str = ".xcode-pilot.toml";
 
     pub fn load(root: &Path) -> Result<Self> {
-        let path = root.join(Self::FILE_NAME);
+        let path = config_path(root)?;
         let text = std::fs::read_to_string(&path)
-            .with_context(|| format!("missing {}; run `xcode-pilot init`", path.display()))?;
-        toml::from_str(&text).context("parse .xcode-pilot.toml")
+            .with_context(|| format!("missing config; run `ios-runner init` ({})", path.display()))?;
+        toml::from_str(&text).context("parse ios-runner config")
     }
 
     pub fn save(&self, root: &Path) -> Result<()> {
@@ -78,4 +76,16 @@ impl PilotConfig {
         }
         Ok(())
     }
+}
+
+fn config_path(root: &Path) -> Result<PathBuf> {
+    let primary = root.join(RunnerConfig::FILE_NAME);
+    if primary.is_file() {
+        return Ok(primary);
+    }
+    let legacy = root.join(RunnerConfig::LEGACY_FILE_NAME);
+    if legacy.is_file() {
+        return Ok(legacy);
+    }
+    Ok(primary)
 }

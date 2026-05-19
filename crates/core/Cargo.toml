@@ -1,6 +1,6 @@
 [package]
-name = "xcode-pilot-core"
-description = "Core logic for Xcode Pilot (project detection, xcodebuild, Zed tasks)"
+name = "ios-runner-core"
+description = "Core logic for iOS-Runner (project detection, xcodebuild, Zed tasks)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

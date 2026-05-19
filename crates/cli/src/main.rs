@@ -4,15 +4,15 @@ use std::process::Command;
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
-use xcode_pilot_core::{
-    PilotConfig, build_project, detect_project, ensure_project, list_schemes, resolve_packages,
+use ios_runner_core::{
+    RunnerConfig, build_project, detect_project, ensure_project, list_schemes, resolve_packages,
     run_on_simulator,
 };
 
 mod mcp;
 
 #[derive(Parser)]
-#[command(name = "xcode-pilot", about = "Build and run Xcode projects for Zed")]
+#[command(name = "ios-runner", about = "Build and run iOS Xcode projects in Zed (iOS-Runner)")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -20,21 +20,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Check Xcode toolchain and project prerequisites
     Doctor,
-    /// Detect project, write .xcode-pilot.toml and .zed/tasks.json
     Init,
-    /// Same as init but skip if already configured (used by Zed extension)
     Ensure,
-    /// MCP stdio server for Zed (auto-detect project on start)
     Mcp,
-    /// Compile for the configured destination
     Build,
-    /// Build, install on simulator, and launch
     Run,
-    /// Resolve Swift Package dependencies
     ResolvePackages,
-    /// List schemes (JSON)
     List {
         #[arg(long, default_value = "schemes")]
         what: String,
@@ -51,17 +43,17 @@ fn main() -> Result<()> {
         Commands::Ensure => cmd_init(&root, true),
         Commands::Mcp => mcp::run_mcp(),
         Commands::Build => {
-            let config = PilotConfig::load(&root)?;
+            let config = RunnerConfig::load(&root)?;
             config.validate(&root)?;
             build_project(&root, &config)
         }
         Commands::Run => {
-            let config = PilotConfig::load(&root)?;
+            let config = RunnerConfig::load(&root)?;
             config.validate(&root)?;
             run_on_simulator(&root, &config)
         }
         Commands::ResolvePackages => {
-            let config = PilotConfig::load(&root)?;
+            let config = RunnerConfig::load(&root)?;
             config.validate(&root)?;
             resolve_packages(&root, &config)
         }
@@ -109,7 +101,7 @@ fn cmd_doctor(root: &PathBuf) -> Result<()> {
     }
 
     if ok {
-        eprintln!("\nReady. Run `xcode-pilot init` in this directory.");
+        eprintln!("\nReady. Run `ios-runner init` in this directory.");
     } else {
         bail!("doctor found issues");
     }
@@ -120,9 +112,9 @@ fn cmd_init(root: &PathBuf, ensure_only: bool) -> Result<()> {
     if ensure_only {
         let report = ensure_project(root)?;
         if report.wrote_config || report.wrote_tasks {
-            eprintln!("Xcode Pilot configured for this project.");
+            eprintln!("iOS-Runner configured for this project.");
         } else {
-            eprintln!("Xcode Pilot: project already configured.");
+            eprintln!("iOS-Runner: project already configured.");
         }
         eprintln!("  scheme: {}", report.scheme);
         eprintln!("  dest:   {}", report.destination);
@@ -130,17 +122,17 @@ fn cmd_init(root: &PathBuf, ensure_only: bool) -> Result<()> {
     }
 
     let _ = ensure_project(root)?;
-    let config = PilotConfig::load(root)?;
+    let config = RunnerConfig::load(root)?;
     let project = detect_project(root)?;
 
-    eprintln!("Wrote {}", PilotConfig::FILE_NAME);
+    eprintln!("Wrote {}", RunnerConfig::FILE_NAME);
     eprintln!("Wrote .zed/tasks.json");
     eprintln!("  scheme: {}", config.scheme);
     eprintln!("  path:   {}", config.path);
     eprintln!("  dest:   {}", config.destination);
 
     if project.has_podfile && !root.join("Pods").is_dir() {
-        eprintln!("\nNext: run task「Xcode Pilot: Pod Install」or `pod install`");
+        eprintln!("\nNext: run task「iOS-Runner: Pod Install」or `pod install`");
     }
 
     print_keybind_hint();
@@ -149,8 +141,8 @@ fn cmd_init(root: &PathBuf, ensure_only: bool) -> Result<()> {
 
 fn print_keybind_hint() {
     eprintln!("\nBind keys in Zed (example):");
-    eprintln!(r#"  "cmd-b": ["task::Spawn", {{ "task_name": "Xcode Pilot: Build" }}],"#);
-    eprintln!(r#"  "cmd-r": ["task::Spawn", {{ "task_name": "Xcode Pilot: Run" }}]"#);
+    eprintln!(r#"  "cmd-b": ["task::Spawn", {{ "task_name": "iOS-Runner: Build" }}],"#);
+    eprintln!(r#"  "cmd-r": ["task::Spawn", {{ "task_name": "iOS-Runner: Run" }}]"#);
 }
 
 fn cmd_list(root: &PathBuf, what: &str) -> Result<()> {

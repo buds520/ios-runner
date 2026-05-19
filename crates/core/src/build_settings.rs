@@ -4,7 +4,7 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
-use crate::config::PilotConfig;
+use crate::config::RunnerConfig;
 
 /// Launch-related paths from `xcodebuild -showBuildSettings -json`.
 /// Aligned with SweetPad's `XcodeBuildSettings` in `common/cli/scripts.ts`.
@@ -14,7 +14,7 @@ pub struct LaunchArtifacts {
     pub bundle_identifier: String,
 }
 
-pub fn launch_artifacts(root: &Path, config: &PilotConfig) -> Result<LaunchArtifacts> {
+pub fn launch_artifacts(root: &Path, config: &RunnerConfig) -> Result<LaunchArtifacts> {
     let derived = config.derived_data_path(root);
     let mut cmd = Command::new("xcodebuild");
     super::xcodebuild::add_config_args(&mut cmd, config);

@@ -9,15 +9,17 @@ xcuserdata/
 .idea/
 .vscode/
 
-# Xcode / Pilot build outputs
+# Xcode / iOS-Runner build outputs
+**/.ios-runner/DerivedData/
 **/.xcode-pilot/DerivedData/
 **/DerivedData/
 *.app
 *.dSYM
 
 # Local Zed project config (generated per project; keep demo as example)
+**/.ios-runner.toml
+!XcodePilotDemo/.ios-runner.toml
 **/.xcode-pilot.toml
-!XcodePilotDemo/.xcode-pilot.toml
 **/.zed/
 !XcodePilotDemo/.zed/
 !XcodePilotDemo/.zed/**

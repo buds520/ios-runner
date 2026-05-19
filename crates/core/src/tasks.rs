@@ -5,7 +5,6 @@ use serde_json::json;
 
 use crate::detect::DetectedProject;
 
-/// Shell one-liner so Zed always passes `build`/`run` and finds `~/.cargo/bin/xcode-pilot`.
 fn shell_task(label: &str, subcommand: &str) -> serde_json::Value {
     json!({
         "label": label,
@@ -13,7 +12,7 @@ fn shell_task(label: &str, subcommand: &str) -> serde_json::Value {
         "args": [
             "-lc",
             format!(
-                "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot {subcommand}"
+                "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner {subcommand}"
             )
         ],
         "allow_concurrent_runs": false,
@@ -29,14 +28,14 @@ pub fn write_zed_tasks(root: &Path, project: &DetectedProject) -> Result<()> {
     std::fs::create_dir_all(&zed_dir).context("create .zed directory")?;
 
     let mut tasks = vec![
-        shell_task("Xcode Pilot: Build", "build"),
-        shell_task("Xcode Pilot: Run", "run"),
-        shell_task("Xcode Pilot: Resolve Swift Packages", "resolve-packages"),
+        shell_task("iOS-Runner: Build", "build"),
+        shell_task("iOS-Runner: Run", "run"),
+        shell_task("iOS-Runner: Resolve Swift Packages", "resolve-packages"),
     ];
 
     if project.has_podfile {
         tasks.push(json!({
-            "label": "Xcode Pilot: Pod Install",
+            "label": "iOS-Runner: Pod Install",
             "command": "/bin/zsh",
             "args": ["-lc", "cd \"$ZED_WORKTREE_ROOT\" && pod install"],
             "allow_concurrent_runs": false,

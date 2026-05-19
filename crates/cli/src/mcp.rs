@@ -1,16 +1,14 @@
-//! Minimal MCP (stdio) for Zed Agent + auto project setup on start.
-//! Protocol: JSON-RPC 2.0 lines on stdin/stdout.
-
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use ios_runner_core::{
+    RunnerConfig, build_project, detect_project, ensure_project, run_on_simulator,
+};
 use serde_json::{json, Value};
-use xcode_pilot_core::{build_project, detect_project, ensure_project, run_on_simulator, PilotConfig};
 
 pub fn run_mcp() -> Result<()> {
     let root = std::env::current_dir().context("current directory")?;
-
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
@@ -29,24 +27,23 @@ pub fn run_mcp() -> Result<()> {
         let result = match method {
             "initialize" => {
                 let setup_msg = auto_setup(&root);
-                eprintln!("[xcode-pilot] {setup_msg}");
+                eprintln!("[ios-runner] {setup_msg}");
                 json!({
                     "protocolVersion": "2024-11-05",
                     "capabilities": { "tools": {} },
                     "serverInfo": {
-                        "name": "xcode-pilot",
+                        "name": "ios-runner",
                         "version": env!("CARGO_PKG_VERSION")
-                    },
-                    "_meta": { "setup": setup_msg }
+                    }
                 })
             }
             "notifications/initialized" => continue,
             "tools/list" => json!({
                 "tools": [
-                    tool_desc("xcode_pilot_detect", "Detect Xcode/CocoaPods project in workspace"),
-                    tool_desc("xcode_pilot_setup", "Write .xcode-pilot.toml and .zed/tasks.json (idempotent)"),
-                    tool_desc("xcode_pilot_build", "Build the iOS app with xcodebuild"),
-                    tool_desc("xcode_pilot_run", "Build, install on simulator, and launch"),
+                    tool_desc("ios_runner_detect", "Detect Xcode/CocoaPods project in workspace"),
+                    tool_desc("ios_runner_setup", "Write .ios-runner.toml and .zed/tasks.json (idempotent)"),
+                    tool_desc("ios_runner_build", "Build the iOS app with xcodebuild"),
+                    tool_desc("ios_runner_run", "Build, install on simulator, and launch"),
                 ]
             }),
             "tools/call" => handle_tool_call(&root, request.get("params"))?,
@@ -83,27 +80,23 @@ fn handle_tool_call(root: &PathBuf, params: Option<&Value>) -> Result<Value> {
         .unwrap_or("");
 
     let text = match name {
-        "xcode_pilot_detect" => match detect_project(root) {
+        "ios_runner_detect" => match detect_project(root) {
             Ok(p) => format!(
                 "Detected {} ({})",
                 p.path.display(),
-                if p.has_podfile {
-                    "CocoaPods"
-                } else {
-                    "Xcode"
-                }
+                if p.has_podfile { "CocoaPods" } else { "Xcode" }
             ),
             Err(e) => format!("Not an Xcode workspace: {e}"),
         },
-        "xcode_pilot_setup" => auto_setup(root),
-        "xcode_pilot_build" => {
-            let config = PilotConfig::load(root)?;
+        "ios_runner_setup" => auto_setup(root),
+        "ios_runner_build" => {
+            let config = RunnerConfig::load(root)?;
             config.validate(root)?;
             build_project(root, &config)?;
             "Build succeeded.".to_string()
         }
-        "xcode_pilot_run" => {
-            let config = PilotConfig::load(root)?;
+        "ios_runner_run" => {
+            let config = RunnerConfig::load(root)?;
             config.validate(root)?;
             run_on_simulator(root, &config)?;
             "Run succeeded.".to_string()
@@ -122,19 +115,19 @@ fn auto_setup(root: &PathBuf) -> String {
         Ok(_) => match ensure_project(root) {
             Ok(r) => {
                 let mut parts = vec![format!(
-                    "Xcode Pilot ready: scheme={} destination={}",
+                    "iOS-Runner ready: scheme={} destination={}",
                     r.scheme, r.destination
                 )];
                 if r.wrote_config {
-                    parts.push("created .xcode-pilot.toml".to_string());
+                    parts.push("created .ios-runner.toml".to_string());
                 }
                 if r.wrote_tasks {
                     parts.push(
-                        "created .zed/tasks.json — use task「Xcode Pilot: Run」or bind cmd-r".to_string(),
+                        "created .zed/tasks.json — use task「iOS-Runner: Run」or bind cmd-r".to_string(),
                     );
                 }
                 if r.has_podfile {
-                    parts.push("Podfile detected: run「Xcode Pilot: Pod Install」if needed".to_string());
+                    parts.push("Podfile detected: run「iOS-Runner: Pod Install」if needed".to_string());
                 }
                 parts.join("; ")
             }

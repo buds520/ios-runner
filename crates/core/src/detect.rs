@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 use walkdir::WalkDir;
 
-use crate::config::{PilotConfig, ProjectKind};
+use crate::config::{ProjectKind, RunnerConfig};
 use crate::xcodebuild::{default_simulator_destination, list_schemes};
 
 #[derive(Debug, Clone)]
@@ -93,7 +93,7 @@ fn find_xcodeproj(root: &Path) -> Result<Option<PathBuf>> {
     Ok(candidates.into_iter().next())
 }
 
-pub fn create_config(root: &Path, project: &DetectedProject) -> Result<PilotConfig> {
+pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerConfig> {
     let schemes = list_schemes(root, project)?;
     let scheme = pick_default_scheme(&schemes)
         .with_context(|| format!("no schemes in {}", project.path.display()))?
@@ -108,13 +108,13 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<PilotConf
         .to_string_lossy()
         .to_string();
 
-    Ok(PilotConfig {
+    Ok(RunnerConfig {
         kind: project.kind,
         path: rel,
         scheme,
         configuration: "Debug".to_string(),
         destination,
-        derived_data: ".xcode-pilot/DerivedData".to_string(),
+        derived_data: ".ios-runner/DerivedData".to_string(),
         xcbeautify: true,
         resolve_packages_before_build: true,
         bring_simulator_to_foreground: true,

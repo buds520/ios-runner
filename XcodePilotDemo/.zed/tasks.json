@@ -1,10 +1,10 @@
 [
   {
-    "label": "Xcode Pilot: Build",
+    "label": "iOS-Runner: Build",
     "command": "/bin/zsh",
     "args": [
       "-lc",
-      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot build"
+      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner build"
     ],
     "allow_concurrent_runs": false,
     "reveal": "always",
@@ -13,11 +13,11 @@
     "use_new_terminal": false
   },
   {
-    "label": "Xcode Pilot: Run",
+    "label": "iOS-Runner: Run",
     "command": "/bin/zsh",
     "args": [
       "-lc",
-      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot run"
+      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner run"
     ],
     "allow_concurrent_runs": false,
     "reveal": "always",
@@ -26,11 +26,11 @@
     "use_new_terminal": false
   },
   {
-    "label": "Xcode Pilot: Resolve Swift Packages",
+    "label": "iOS-Runner: Resolve Swift Packages",
     "command": "/bin/zsh",
     "args": [
       "-lc",
-      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot resolve-packages"
+      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner resolve-packages"
     ],
     "allow_concurrent_runs": false,
     "reveal": "always",

@@ -6,7 +6,7 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
 use crate::build_settings::launch_artifacts;
-use crate::config::{PilotConfig, ProjectKind};
+use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
 
 pub fn list_schemes(root: &Path, project: &DetectedProject) -> Result<Vec<String>> {
@@ -78,7 +78,7 @@ fn extract_braced_destination(line: &str) -> Option<String> {
     Some(inner.to_string())
 }
 
-pub fn resolve_packages(root: &Path, config: &PilotConfig) -> Result<()> {
+pub fn resolve_packages(root: &Path, config: &RunnerConfig) -> Result<()> {
     let mut cmd = Command::new("xcodebuild");
     add_config_args(&mut cmd, config);
     cmd.arg("-resolvePackageDependencies");
@@ -86,7 +86,7 @@ pub fn resolve_packages(root: &Path, config: &PilotConfig) -> Result<()> {
     run_command(cmd, root, "resolve package dependencies")
 }
 
-pub fn build_project(root: &Path, config: &PilotConfig) -> Result<()> {
+pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
     if config.resolve_packages_before_build {
         let _ = resolve_packages(root, config);
     }
@@ -114,7 +114,7 @@ pub fn build_project(root: &Path, config: &PilotConfig) -> Result<()> {
     }
 }
 
-pub fn run_on_simulator(root: &Path, config: &PilotConfig) -> Result<()> {
+pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
     build_project(root, config)?;
 
     let artifacts = launch_artifacts(root, config)?;
@@ -208,7 +208,7 @@ fn add_project_args(cmd: &mut Command, project: &DetectedProject) {
     }
 }
 
-pub(crate) fn add_config_args(cmd: &mut Command, config: &PilotConfig) {
+pub(crate) fn add_config_args(cmd: &mut Command, config: &RunnerConfig) {
     match config.kind {
         ProjectKind::Workspace => {
             cmd.args(["-workspace", &config.path]);
