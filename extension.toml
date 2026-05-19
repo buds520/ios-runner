@@ -1,0 +1,10 @@
+id = "xcode-pilot"
+name = "Xcode Pilot"
+version = "0.1.0"
+schema_version = 1
+authors = ["Xcode Pilot Contributors <xcode-pilot@users.noreply.github.com>"]
+description = "Build and run iOS Xcode projects in Zed using xcodebuild. Auto-detects .xcodeproj and CocoaPods workspaces, generates project tasks, and supports simulator launch. Requires macOS, Xcode, and the xcode-pilot CLI."
+repository = "https://github.com/YOUR_GITHUB_USERNAME/xcode-pilot"
+
+[context_servers.xcode-pilot]
+name = "Xcode Pilot"

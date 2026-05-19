@@ -1,0 +1,23 @@
+/target/
+/crates/target/
+extension.wasm
+*.wasm
+**/*.rs.bk
+.DS_Store
+*.xcuserstate
+xcuserdata/
+.idea/
+.vscode/
+
+# Xcode / Pilot build outputs
+**/.xcode-pilot/DerivedData/
+**/DerivedData/
+*.app
+*.dSYM
+
+# Local Zed project config (generated per project; keep demo as example)
+**/.xcode-pilot.toml
+!XcodePilotDemo/.xcode-pilot.toml
+**/.zed/
+!XcodePilotDemo/.zed/
+!XcodePilotDemo/.zed/**

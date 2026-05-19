@@ -1,0 +1,9 @@
+kind = "project"
+path = "XcodePilotDemo.xcodeproj"
+scheme = "XcodePilotDemo"
+configuration = "Debug"
+destination = "platform=iOS Simulator,name=iPhone 17"
+derived_data = ".xcode-pilot/DerivedData"
+xcbeautify = true
+resolve_packages_before_build = true
+bring_simulator_to_foreground = true

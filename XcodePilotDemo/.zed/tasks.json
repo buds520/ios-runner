@@ -1,0 +1,41 @@
+[
+  {
+    "label": "Xcode Pilot: Build",
+    "command": "/bin/zsh",
+    "args": [
+      "-lc",
+      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot build"
+    ],
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "hide": "never",
+    "save": "all",
+    "use_new_terminal": false
+  },
+  {
+    "label": "Xcode Pilot: Run",
+    "command": "/bin/zsh",
+    "args": [
+      "-lc",
+      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot run"
+    ],
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "hide": "never",
+    "save": "all",
+    "use_new_terminal": false
+  },
+  {
+    "label": "Xcode Pilot: Resolve Swift Packages",
+    "command": "/bin/zsh",
+    "args": [
+      "-lc",
+      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && xcode-pilot resolve-packages"
+    ],
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "hide": "never",
+    "save": "all",
+    "use_new_terminal": false
+  }
+]
