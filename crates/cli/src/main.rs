@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
@@ -94,7 +94,7 @@ fn workspace_root() -> Result<PathBuf> {
     env::current_dir().context("current directory")
 }
 
-fn load_config(root: &PathBuf) -> Result<RunnerConfig> {
+fn load_config(root: &Path) -> Result<RunnerConfig> {
     let config = RunnerConfig::load(root)?;
     config.apply_locale();
     config.validate(root)?;
@@ -154,7 +154,7 @@ fn cmd_install_self() -> Result<()> {
     Ok(())
 }
 
-fn cmd_doctor(root: &PathBuf) -> Result<()> {
+fn cmd_doctor(root: &Path) -> Result<()> {
     let mut ok = true;
 
     for (name, args) in [
@@ -204,7 +204,7 @@ fn cmd_doctor(root: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_init(root: &PathBuf, pick: bool) -> Result<()> {
+fn cmd_init(root: &Path, pick: bool) -> Result<()> {
     let config = if pick {
         configure_project(root, None)?
     } else {
@@ -218,7 +218,7 @@ fn cmd_init(root: &PathBuf, pick: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_init_ensure(root: &PathBuf) -> Result<()> {
+fn cmd_init_ensure(root: &Path) -> Result<()> {
     let report = ensure_project(root)?;
     if let Ok(config) = RunnerConfig::load(root) {
         config.apply_locale();
@@ -250,7 +250,7 @@ fn cmd_init_ensure(root: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_configure(root: &PathBuf, run: bool, no_run: bool) -> Result<()> {
+fn cmd_configure(root: &Path, run: bool, no_run: bool) -> Result<()> {
     let run_after = if run {
         Some(true)
     } else if no_run {
@@ -284,7 +284,7 @@ fn print_keybind_hint() {
     eprintln!(r#"  "cmd-r": ["task::Spawn", {{ "task_name": "iOS-Runner: Run" }}]"#);
 }
 
-fn cmd_list(root: &PathBuf, what: &str) -> Result<()> {
+fn cmd_list(root: &Path, what: &str) -> Result<()> {
     match what {
         "schemes" => {
             let project = detect_project(root)?;

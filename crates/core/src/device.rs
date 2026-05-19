@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
@@ -42,7 +41,7 @@ pub fn ensure_device_ready(device_id: &str) -> Result<()> {
 }
 
 fn query_lock_state(device_id: &str) -> Result<Option<LockStateResult>> {
-    let json_path = PathBuf::from(std::env::temp_dir()).join(format!("ios-runner-lock-{device_id}.json"));
+    let json_path = std::env::temp_dir().join(format!("ios-runner-lock-{device_id}.json"));
     let _ = fs::remove_file(&json_path);
 
     let json_arg = json_path
@@ -104,7 +103,11 @@ pub fn devicectl_failure_hint(stderr: &str, stdout: &str) -> Option<String> {
             .to_string(),
         );
     }
-    if combined.contains("not trusted") || combined.contains("trust") {
+    if combined.contains("not trusted")
+        || combined.contains("untrusted")
+        || combined.contains("Trust This Computer")
+        || combined.contains("pairing required")
+    {
         return Some(
             t(
                 "请在 iPhone 上信任此 Mac：连接后解锁设备，按提示点「信任」。",

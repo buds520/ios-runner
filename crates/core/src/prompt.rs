@@ -42,12 +42,9 @@ pub fn pick_one(title: &str, options: &[String]) -> Result<usize> {
         .trim()
         .parse()
         .with_context(|| {
-            format!(
-                "{}",
-                crate::locale::tf(
-                    || format!("无效编号: {line:?}"),
-                    || format!("Invalid number: {line:?}"),
-                )
+            crate::locale::tf(
+                || format!("无效编号: {line:?}"),
+                || format!("Invalid number: {line:?}"),
             )
         })?;
 

@@ -1,8 +1,6 @@
 use std::cell::Cell;
 use std::path::Path;
 
-use crate::config::RunnerConfig;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang {
     ZhCn,
@@ -46,8 +44,16 @@ pub fn init_locale(root: Option<&Path>) {
         return;
     }
     if let Some(root) = root {
-        if let Ok(config) = RunnerConfig::load(root) {
-            set_lang(Lang::parse(&config.language));
+        if let Ok(file) = crate::global_store::load_global_file() {
+            let key = crate::global_store::canonical_root(root)
+                .to_string_lossy()
+                .to_string();
+            let lang = file
+                .projects
+                .get(&key)
+                .map(|p| Lang::parse(&p.language))
+                .unwrap_or_else(|| Lang::parse(&file.defaults.language));
+            set_lang(lang);
         }
     }
 }

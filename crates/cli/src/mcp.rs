@@ -1,5 +1,5 @@
 use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+use std::path::Path;
 
 use anyhow::{Context, Result};
 use ios_runner_core::{
@@ -44,7 +44,10 @@ pub fn run_mcp() -> Result<()> {
             "tools/list" => json!({
                 "tools": [
                     tool_desc("ios_runner_detect", "Detect Xcode/CocoaPods project in workspace"),
-                    tool_desc("ios_runner_setup", "Save project settings to ~/.config/ios-runner (idempotent)"),
+                    tool_desc(
+                        "ios_runner_setup",
+                        "Detect Xcode project and save run settings to ~/.config/ios-runner/config.toml (not .ios-runner.toml in repo)",
+                    ),
                     tool_desc("ios_runner_build", "Build the iOS app with xcodebuild"),
                     tool_desc("ios_runner_run", "Build, install on simulator, and launch"),
                 ]
@@ -76,7 +79,7 @@ fn tool_desc(name: &str, description: &str) -> Value {
     })
 }
 
-fn handle_tool_call(root: &PathBuf, params: Option<&Value>) -> Result<Value> {
+fn handle_tool_call(root: &Path, params: Option<&Value>) -> Result<Value> {
     let name = params
         .and_then(|p| p.get("name"))
         .and_then(|n| n.as_str())
@@ -113,7 +116,7 @@ fn handle_tool_call(root: &PathBuf, params: Option<&Value>) -> Result<Value> {
     }))
 }
 
-fn auto_setup(root: &PathBuf) -> String {
+fn auto_setup(root: &Path) -> String {
     match detect_project(root) {
         Ok(_) => match ensure_project(root) {
             Ok(r) => {

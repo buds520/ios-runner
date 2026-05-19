@@ -20,7 +20,7 @@ pub struct RunnerConfig {
     pub destination: String,
     #[serde(default = "default_derived_data")]
     pub derived_data: String,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub xcbeautify: bool,
     #[serde(default = "default_resolve_packages")]
     pub resolve_packages_before_build: bool,
@@ -122,6 +122,15 @@ impl RunnerConfig {
         if std::env::var("IOS_RUNNER_LANG").is_err() {
             crate::locale::set_lang(crate::locale::Lang::parse(&self.language));
         }
+    }
+
+    /// Fill unset fields from global defaults (after loading a project entry).
+    pub fn merge_defaults(&mut self, defaults: &crate::global_store::GlobalDefaults) {
+        if self.language.trim().is_empty() {
+            self.language = defaults.language.clone();
+        }
+        // Booleans in stored config are always explicit; defaults apply at create time.
+        let _ = defaults;
     }
 
     pub fn project_path(&self, root: &Path) -> PathBuf {

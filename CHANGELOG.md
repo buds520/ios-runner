@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1] - 2026-05-19
+
+### Fixed
+- Physical device `showBuildSettings`: use `iphoneos` SDK instead of hardcoded simulator SDK
+- Default simulator destination: prefer `simctl` list; no silent fallback to `iPhone 16`
+- Global config `config.toml`: file lock on read-modify-write (parallel Zed tasks)
+- Stable DerivedData cache folder names (FNV-1a instead of `DefaultHasher`)
+- Swift Package resolve failures are warned instead of silently ignored
+- Zed task CLI download pinned to release version (not `latest`)
+- Extension bootstrap runs once per version; clearer errors
+- Tighter devicectl trust/lock hints; `xcbeautify` default aligned with global config
+
 ## [0.2.0] - 2026-05-20
 
 ### Added

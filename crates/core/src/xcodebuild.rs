@@ -10,7 +10,7 @@ use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
 use crate::destination::{device_udid_from_destination, is_simulator_destination};
 use crate::device::{ensure_device_ready, report_devicectl_failure};
-use crate::simulator::udid_for_destination_name;
+use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
 use crate::locale::t;
 use crate::terminal_ui::{hint_xcbeautify, info, section, success, warn};
 
@@ -70,7 +70,19 @@ pub fn default_simulator_destination(
         }
     }
 
-    Ok("platform=iOS Simulator,name=iPhone 16".to_string())
+    if let Ok(sims) = list_simulators() {
+        if let Some(sim) = sims.into_iter().find(|s| s.name.starts_with("iPhone")) {
+            return Ok(destination_for_simulator(&sim));
+        }
+    }
+
+    bail!(
+        "{}",
+        t(
+            "未找到可用的 iOS 模拟器，请先安装 Xcode 模拟器运行时，或运行 ios-runner configure",
+            "No iOS Simulator available. Install an Xcode simulator runtime or run ios-runner configure",
+        )
+    )
 }
 
 fn extract_braced_destination(line: &str) -> Option<String> {
@@ -100,7 +112,15 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
 
     if config.resolve_packages_before_build {
         info(t("解析 Swift Package…", "Resolving Swift packages…"));
-        let _ = resolve_packages_quiet(root, config);
+        if let Err(e) = resolve_packages_quiet(root, config) {
+            warn(&format!(
+                "{}: {e}",
+                t(
+                    "Swift Package 解析失败（将继续编译）",
+                    "Swift package resolve failed (continuing build)",
+                )
+            ));
+        }
     }
 
     let derived = config.derived_data_path(root);
@@ -315,12 +335,17 @@ fn resolve_packages_quiet(root: &Path, config: &RunnerConfig) -> Result<()> {
     let mut cmd = Command::new("xcodebuild");
     add_config_args(&mut cmd, config);
     cmd.arg("-resolvePackageDependencies");
-    cmd.current_dir(root)
+    let status = cmd
+        .current_dir(root)
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .status()
         .context("resolve packages")?;
-    Ok(())
+    if status.success() {
+        Ok(())
+    } else {
+        bail!("resolvePackageDependencies failed (exit {:?})", status.code())
+    }
 }
 
 fn simulator_udid_for_destination(destination: &str) -> Result<String> {
@@ -330,7 +355,7 @@ fn simulator_udid_for_destination(destination: &str) -> Result<String> {
             let part = part.trim();
             part.strip_prefix("name=").map(|s| s.trim())
         })
-        .unwrap_or("iPhone 16");
+        .context("simulator destination missing name=")?;
     udid_for_destination_name(name)
 }
 

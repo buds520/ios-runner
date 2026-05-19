@@ -23,6 +23,7 @@ fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::
 }
 
 /// Run in Zed's terminal panel; auto-download CLI if needed (no cargo).
+#[allow(dead_code)]
 pub fn shell_task(label: &str, subcommand: &str) -> serde_json::Value {
     shell_task_with_lang(label, subcommand, Lang::ZhCn)
 }

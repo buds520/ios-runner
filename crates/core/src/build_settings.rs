@@ -5,6 +5,7 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
 use crate::config::RunnerConfig;
+use crate::destination::is_simulator_destination;
 
 /// Launch-related paths from `xcodebuild -showBuildSettings -json`.
 /// Aligned with SweetPad's `XcodeBuildSettings` in `common/cli/scripts.ts`.
@@ -16,6 +17,11 @@ pub struct LaunchArtifacts {
 
 pub fn launch_artifacts(root: &Path, config: &RunnerConfig) -> Result<LaunchArtifacts> {
     let derived = config.derived_data_path(root);
+    let sdk = if is_simulator_destination(&config.destination) {
+        "iphonesimulator"
+    } else {
+        "iphoneos"
+    };
     let mut cmd = Command::new("xcodebuild");
     super::xcodebuild::add_config_args(&mut cmd, config);
     cmd.args([
@@ -24,7 +30,7 @@ pub fn launch_artifacts(root: &Path, config: &RunnerConfig) -> Result<LaunchArti
         "-destination",
         &config.destination,
         "-sdk",
-        "iphonesimulator",
+        sdk,
         "-showBuildSettings",
         "-json",
     ]);
@@ -86,7 +92,7 @@ pub fn launch_artifacts(root: &Path, config: &RunnerConfig) -> Result<LaunchArti
 }
 
 fn extract_json_payload(output: &str) -> Option<String> {
-    if let Ok(_) = serde_json::from_str::<serde_json::Value>(output) {
+    if serde_json::from_str::<serde_json::Value>(output).is_ok() {
         return Some(output.to_string());
     }
     let start = output.find('{').or_else(|| output.find('['))?;

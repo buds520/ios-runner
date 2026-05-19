@@ -8,9 +8,13 @@ use zed_extension_api::{
 
 struct IosRunnerExtension;
 
+const EXTENSION_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 impl Extension for IosRunnerExtension {
     fn new() -> Self {
-        let _ = bootstrap_install();
+        if let Err(e) = bootstrap_install() {
+            eprintln!("[ios-runner] bootstrap: {e}");
+        }
         Self
     }
 
@@ -24,36 +28,64 @@ impl Extension for IosRunnerExtension {
     }
 }
 
-/// On extension load: download CLI (if needed), install to ~/.ios-runner/bin, refresh global Zed tasks.
+fn bootstrap_marker_path() -> Option<PathBuf> {
+    std::env::var("HOME")
+        .ok()
+        .map(|home| PathBuf::from(home).join(format!(".ios-runner/.bootstrap-v{EXTENSION_VERSION}")))
+}
+
+/// On extension load: download CLI (if needed), install to ~/.ios-runner/bin, refresh global Zed tasks (once per version).
 fn bootstrap_install() -> Result<(), String> {
+    if let Some(marker) = bootstrap_marker_path() {
+        if marker.is_file() {
+            return Ok(());
+        }
+    }
+
     let path = ensure_cli_binary()?;
     if path == "ios-runner" {
         return Ok(());
     }
 
-    if path.contains("/.ios-runner/bin/ios-runner") {
-        let _ = ProcessCommand::new(&path)
-            .args(["install-zed-tasks"])
-            .output();
-        return Ok(());
-    }
-
-    // Downloaded into extension dir — copy into ~/.ios-runner/bin and register tasks.
-    if let Ok(home) = std::env::var("HOME") {
+    let install_bin = if path.contains("/.ios-runner/bin/ios-runner") {
+        path.clone()
+    } else if let Ok(home) = std::env::var("HOME") {
         let install_dir = format!("{home}/.ios-runner/bin");
         let install_bin = format!("{install_dir}/ios-runner");
-        let _ = ProcessCommand::new("/bin/mkdir")
+        ProcessCommand::new("/bin/mkdir")
             .args(["-p", &install_dir])
-            .output();
-        let _ = ProcessCommand::new("/bin/cp")
+            .output()
+            .map_err(|e| e.to_string())?;
+        ProcessCommand::new("/bin/cp")
             .args([&path, &install_bin])
-            .output();
-        let _ = ProcessCommand::new("/bin/chmod")
+            .output()
+            .map_err(|e| e.to_string())?;
+        ProcessCommand::new("/bin/chmod")
             .args(["+x", &install_bin])
-            .output();
-        let _ = ProcessCommand::new(&install_bin)
-            .args(["install-zed-tasks"])
-            .output();
+            .output()
+            .map_err(|e| e.to_string())?;
+        install_bin
+    } else {
+        return Ok(());
+    };
+
+    let out = ProcessCommand::new(&install_bin)
+        .args(["install-zed-tasks"])
+        .output()
+        .map_err(|e| e.to_string())?;
+    if out.status != Some(0) {
+        return Err(format!(
+            "install-zed-tasks failed (exit {:?}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+
+    if let Some(marker) = bootstrap_marker_path() {
+        if let Some(parent) = marker.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(&marker, EXTENSION_VERSION);
     }
 
     Ok(())

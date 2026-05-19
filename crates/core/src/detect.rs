@@ -56,7 +56,7 @@ pub fn detect_project(root: &Path) -> Result<DetectedProject> {
     );
 }
 
-fn find_workspace(root: &Path, cocoapods: bool) -> Result<Option<PathBuf>> {
+fn find_workspace(root: &Path, _cocoapods: bool) -> Result<Option<PathBuf>> {
     let mut candidates = Vec::new();
     for entry in WalkDir::new(root).max_depth(3).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
@@ -110,6 +110,10 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerCon
         .to_string_lossy()
         .to_string();
 
+    let defaults = load_global_file()
+        .map(|f| f.defaults)
+        .unwrap_or_default();
+
     Ok(RunnerConfig {
         kind: project.kind,
         path: rel,
@@ -119,23 +123,15 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerCon
         derived_data: global_derived_data_path(root)?
             .to_string_lossy()
             .to_string(),
-        xcbeautify: load_global_file().map(|f| f.defaults.xcbeautify).unwrap_or(true),
-        resolve_packages_before_build: load_global_file()
-            .map(|f| f.defaults.resolve_packages_before_build)
-            .unwrap_or(true),
-        bring_simulator_to_foreground: load_global_file()
-            .map(|f| f.defaults.bring_simulator_to_foreground)
-            .unwrap_or(true),
+        xcbeautify: defaults.xcbeautify,
+        resolve_packages_before_build: defaults.resolve_packages_before_build,
+        bring_simulator_to_foreground: defaults.bring_simulator_to_foreground,
         development_team: None,
-        language: std::env::var("IOS_RUNNER_LANG").unwrap_or_else(|_| {
-            load_global_file()
-                .map(|f| f.defaults.language)
-                .unwrap_or_else(|_| "zh-CN".to_string())
-        }),
+        language: std::env::var("IOS_RUNNER_LANG").unwrap_or(defaults.language),
     })
 }
 
-fn pick_default_scheme<'a>(schemes: &'a [String]) -> Option<&'a str> {
+fn pick_default_scheme(schemes: &[String]) -> Option<&str> {
     schemes
         .iter()
         .find(|s| !s.starts_with("Pods-"))
