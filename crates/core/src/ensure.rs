@@ -23,9 +23,10 @@ pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
     }
 
     if !tasks_path.is_file() {
-        write_zed_tasks(root, &project)?;
         wrote_tasks = true;
     }
+    // Always refresh tasks so Zed picks up template changes (terminal, labels).
+    write_zed_tasks(root, &project)?;
 
     let config = RunnerConfig::load(root)?;
 

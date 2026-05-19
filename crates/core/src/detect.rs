@@ -66,7 +66,8 @@ fn find_workspace(root: &Path, cocoapods: bool) -> Result<Option<PathBuf>> {
             continue;
         }
         let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-        if cocoapods && name == "project.xcworkspace" {
+        // Embedded workspace inside .xcodeproj — use the .xcodeproj instead.
+        if name == "project.xcworkspace" {
             continue;
         }
         candidates.push(path.to_path_buf());
@@ -118,6 +119,7 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerCon
         xcbeautify: true,
         resolve_packages_before_build: true,
         bring_simulator_to_foreground: true,
+        development_team: None,
     })
 }
 

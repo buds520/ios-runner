@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use ios_runner_core::{
-    RunnerConfig, build_project, detect_project, ensure_project, run_on_simulator,
+    RunnerConfig, build_project, detect_project, ensure_project, run_app,
 };
 use serde_json::{json, Value};
 
@@ -26,6 +26,9 @@ pub fn run_mcp() -> Result<()> {
 
         let result = match method {
             "initialize" => {
+                let _ = std::process::Command::new(std::env::current_exe().unwrap_or_default())
+                    .arg("install-self")
+                    .status();
                 let setup_msg = auto_setup(&root);
                 eprintln!("[ios-runner] {setup_msg}");
                 json!({
@@ -98,7 +101,7 @@ fn handle_tool_call(root: &PathBuf, params: Option<&Value>) -> Result<Value> {
         "ios_runner_run" => {
             let config = RunnerConfig::load(root)?;
             config.validate(root)?;
-            run_on_simulator(root, &config)?;
+            run_app(root, &config)?;
             "Run succeeded.".to_string()
         }
         _ => format!("Unknown tool: {name}"),

@@ -1,41 +1,80 @@
 [
   {
-    "label": "iOS-Runner: Build",
-    "command": "/bin/zsh",
+    "allow_concurrent_runs": false,
     "args": [
       "-lc",
-      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner build"
+      "IOS_RUNNER=\"$HOME/.ios-runner/bin/ios-runner\"\nif [ ! -x \"$IOS_RUNNER\" ]; then\n  echo \"iOS-Runner: 正在下载命令行工具（无需 cargo）…\"\n  mkdir -p \"$HOME/.ios-runner/bin\"\n  ARCH=\"$(uname -m)\"\n  case \"$ARCH\" in\n    arm64) ASSET=\"ios-runner-aarch64-apple-darwin\" ;;\n    x86_64) ASSET=\"ios-runner-x86_64-apple-darwin\" ;;\n    *) echo \"不支持的 Mac 架构: $ARCH\"; exit 1 ;;\n  esac\n  URL=\"https://github.com/buds520/ios-runner/releases/latest/download/${ASSET}\"\n  if ! curl -fsSL \"$URL\" -o \"$IOS_RUNNER\"; then\n    echo \"下载失败: $URL\"\n    echo \"请检查网络，或暂时用: cargo install ios-runner --git https://github.com/buds520/ios-runner --locked\"\n    exit 1\n  fi\n  chmod +x \"$IOS_RUNNER\"\n  echo \"✓ 已安装 $IOS_RUNNER\"\nfi\nexport PATH=\"$HOME/.ios-runner/bin:$PATH\"\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$IOS_RUNNER\" ensure && \"$IOS_RUNNER\" run"
     ],
-    "allow_concurrent_runs": false,
-    "reveal": "always",
+    "command": "/bin/zsh",
     "hide": "never",
-    "save": "all",
-    "use_new_terminal": false
-  },
-  {
     "label": "iOS-Runner: Run",
-    "command": "/bin/zsh",
-    "args": [
-      "-lc",
-      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner run"
-    ],
-    "allow_concurrent_runs": false,
     "reveal": "always",
-    "hide": "never",
     "save": "all",
-    "use_new_terminal": false
+    "use_new_terminal": true
   },
   {
-    "label": "iOS-Runner: Resolve Swift Packages",
-    "command": "/bin/zsh",
+    "allow_concurrent_runs": false,
     "args": [
       "-lc",
-      "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner resolve-packages"
+      "IOS_RUNNER=\"$HOME/.ios-runner/bin/ios-runner\"\nif [ ! -x \"$IOS_RUNNER\" ]; then\n  echo \"iOS-Runner: 正在下载命令行工具（无需 cargo）…\"\n  mkdir -p \"$HOME/.ios-runner/bin\"\n  ARCH=\"$(uname -m)\"\n  case \"$ARCH\" in\n    arm64) ASSET=\"ios-runner-aarch64-apple-darwin\" ;;\n    x86_64) ASSET=\"ios-runner-x86_64-apple-darwin\" ;;\n    *) echo \"不支持的 Mac 架构: $ARCH\"; exit 1 ;;\n  esac\n  URL=\"https://github.com/buds520/ios-runner/releases/latest/download/${ASSET}\"\n  if ! curl -fsSL \"$URL\" -o \"$IOS_RUNNER\"; then\n    echo \"下载失败: $URL\"\n    echo \"请检查网络，或暂时用: cargo install ios-runner --git https://github.com/buds520/ios-runner --locked\"\n    exit 1\n  fi\n  chmod +x \"$IOS_RUNNER\"\n  echo \"✓ 已安装 $IOS_RUNNER\"\nfi\nexport PATH=\"$HOME/.ios-runner/bin:$PATH\"\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$IOS_RUNNER\" ensure && \"$IOS_RUNNER\" configure --run"
     ],
-    "allow_concurrent_runs": false,
-    "reveal": "always",
+    "command": "/bin/zsh",
     "hide": "never",
+    "label": "iOS-Runner: Select Scheme & Device",
+    "reveal": "always",
     "save": "all",
-    "use_new_terminal": false
+    "use_new_terminal": true
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "-lc",
+      "IOS_RUNNER=\"$HOME/.ios-runner/bin/ios-runner\"\nif [ ! -x \"$IOS_RUNNER\" ]; then\n  echo \"iOS-Runner: 正在下载命令行工具（无需 cargo）…\"\n  mkdir -p \"$HOME/.ios-runner/bin\"\n  ARCH=\"$(uname -m)\"\n  case \"$ARCH\" in\n    arm64) ASSET=\"ios-runner-aarch64-apple-darwin\" ;;\n    x86_64) ASSET=\"ios-runner-x86_64-apple-darwin\" ;;\n    *) echo \"不支持的 Mac 架构: $ARCH\"; exit 1 ;;\n  esac\n  URL=\"https://github.com/buds520/ios-runner/releases/latest/download/${ASSET}\"\n  if ! curl -fsSL \"$URL\" -o \"$IOS_RUNNER\"; then\n    echo \"下载失败: $URL\"\n    echo \"请检查网络，或暂时用: cargo install ios-runner --git https://github.com/buds520/ios-runner --locked\"\n    exit 1\n  fi\n  chmod +x \"$IOS_RUNNER\"\n  echo \"✓ 已安装 $IOS_RUNNER\"\nfi\nexport PATH=\"$HOME/.ios-runner/bin:$PATH\"\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$IOS_RUNNER\" ensure && \"$IOS_RUNNER\" configure --no-run"
+    ],
+    "command": "/bin/zsh",
+    "hide": "never",
+    "label": "iOS-Runner: Select Only (no run)",
+    "reveal": "always",
+    "save": "all",
+    "use_new_terminal": true
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "-lc",
+      "IOS_RUNNER=\"$HOME/.ios-runner/bin/ios-runner\"\nif [ ! -x \"$IOS_RUNNER\" ]; then\n  echo \"iOS-Runner: 正在下载命令行工具（无需 cargo）…\"\n  mkdir -p \"$HOME/.ios-runner/bin\"\n  ARCH=\"$(uname -m)\"\n  case \"$ARCH\" in\n    arm64) ASSET=\"ios-runner-aarch64-apple-darwin\" ;;\n    x86_64) ASSET=\"ios-runner-x86_64-apple-darwin\" ;;\n    *) echo \"不支持的 Mac 架构: $ARCH\"; exit 1 ;;\n  esac\n  URL=\"https://github.com/buds520/ios-runner/releases/latest/download/${ASSET}\"\n  if ! curl -fsSL \"$URL\" -o \"$IOS_RUNNER\"; then\n    echo \"下载失败: $URL\"\n    echo \"请检查网络，或暂时用: cargo install ios-runner --git https://github.com/buds520/ios-runner --locked\"\n    exit 1\n  fi\n  chmod +x \"$IOS_RUNNER\"\n  echo \"✓ 已安装 $IOS_RUNNER\"\nfi\nexport PATH=\"$HOME/.ios-runner/bin:$PATH\"\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$IOS_RUNNER\" ensure && \"$IOS_RUNNER\" build"
+    ],
+    "command": "/bin/zsh",
+    "hide": "never",
+    "label": "iOS-Runner: Build",
+    "reveal": "always",
+    "save": "all",
+    "use_new_terminal": true
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "-lc",
+      "IOS_RUNNER=\"$HOME/.ios-runner/bin/ios-runner\"\nif [ ! -x \"$IOS_RUNNER\" ]; then\n  echo \"iOS-Runner: 正在下载命令行工具（无需 cargo）…\"\n  mkdir -p \"$HOME/.ios-runner/bin\"\n  ARCH=\"$(uname -m)\"\n  case \"$ARCH\" in\n    arm64) ASSET=\"ios-runner-aarch64-apple-darwin\" ;;\n    x86_64) ASSET=\"ios-runner-x86_64-apple-darwin\" ;;\n    *) echo \"不支持的 Mac 架构: $ARCH\"; exit 1 ;;\n  esac\n  URL=\"https://github.com/buds520/ios-runner/releases/latest/download/${ASSET}\"\n  if ! curl -fsSL \"$URL\" -o \"$IOS_RUNNER\"; then\n    echo \"下载失败: $URL\"\n    echo \"请检查网络，或暂时用: cargo install ios-runner --git https://github.com/buds520/ios-runner --locked\"\n    exit 1\n  fi\n  chmod +x \"$IOS_RUNNER\"\n  echo \"✓ 已安装 $IOS_RUNNER\"\nfi\nexport PATH=\"$HOME/.ios-runner/bin:$PATH\"\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$IOS_RUNNER\" ensure && \"$IOS_RUNNER\" build --verbose"
+    ],
+    "command": "/bin/zsh",
+    "hide": "never",
+    "label": "iOS-Runner: Build (verbose)",
+    "reveal": "always",
+    "save": "all",
+    "use_new_terminal": true
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "-lc",
+      "IOS_RUNNER=\"$HOME/.ios-runner/bin/ios-runner\"\nif [ ! -x \"$IOS_RUNNER\" ]; then\n  echo \"iOS-Runner: 正在下载命令行工具（无需 cargo）…\"\n  mkdir -p \"$HOME/.ios-runner/bin\"\n  ARCH=\"$(uname -m)\"\n  case \"$ARCH\" in\n    arm64) ASSET=\"ios-runner-aarch64-apple-darwin\" ;;\n    x86_64) ASSET=\"ios-runner-x86_64-apple-darwin\" ;;\n    *) echo \"不支持的 Mac 架构: $ARCH\"; exit 1 ;;\n  esac\n  URL=\"https://github.com/buds520/ios-runner/releases/latest/download/${ASSET}\"\n  if ! curl -fsSL \"$URL\" -o \"$IOS_RUNNER\"; then\n    echo \"下载失败: $URL\"\n    echo \"请检查网络，或暂时用: cargo install ios-runner --git https://github.com/buds520/ios-runner --locked\"\n    exit 1\n  fi\n  chmod +x \"$IOS_RUNNER\"\n  echo \"✓ 已安装 $IOS_RUNNER\"\nfi\nexport PATH=\"$HOME/.ios-runner/bin:$PATH\"\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$IOS_RUNNER\" ensure && \"$IOS_RUNNER\" resolve-packages"
+    ],
+    "command": "/bin/zsh",
+    "hide": "never",
+    "label": "iOS-Runner: Resolve Swift Packages",
+    "reveal": "always",
+    "save": "all",
+    "use_new_terminal": true
   }
 ]

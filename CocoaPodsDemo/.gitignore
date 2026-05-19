@@ -1,0 +1,8 @@
+.ios-runner/
+**/.ios-runner.toml
+Pods/
+DerivedData/
+*.xcworkspace
+!default.xcworkspace
+xcuserdata/
+*.xcuserstate

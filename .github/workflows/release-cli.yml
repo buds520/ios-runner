@@ -1,0 +1,44 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            asset: ios-runner-aarch64-apple-darwin
+          - runner: macos-13
+            target: x86_64-apple-darwin
+            asset: ios-runner-x86_64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        working-directory: crates
+        run: cargo build --release -p ios-runner-cli --target ${{ matrix.target }}
+
+      - name: Stage binary
+        run: |
+          cp "crates/target/${{ matrix.target }}/release/ios-runner" "${{ matrix.asset }}"
+          chmod +x "${{ matrix.asset }}"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ matrix.asset }}

@@ -5,8 +5,9 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use ios_runner_core::{
-    RunnerConfig, build_project, configure_project, detect_project, ensure_project, list_schemes,
-    list_simulators, resolve_packages, run_on_simulator,
+    RunnerConfig, build_project, configure_project, detect_project, ensure_project,
+    install_global_zed_tasks, list_run_destinations, list_schemes, list_simulators,
+    resolve_packages, run_app,
 };
 
 mod mcp;
@@ -28,12 +29,30 @@ enum Commands {
         pick: bool,
     },
     Ensure,
-    /// Interactive scheme + simulator selection, then save config
-    Configure,
+    /// Interactive scheme + device; saves config (prompts to run unless flags set)
+    Configure {
+        /// After saving, build and launch immediately
+        #[arg(long, short)]
+        run: bool,
+        /// Only save config, do not run
+        #[arg(long)]
+        no_run: bool,
+    },
     Mcp,
-    Build,
-    Run,
+    Build {
+        /// Full xcodebuild output (no xcbeautify)
+        #[arg(long, short)]
+        verbose: bool,
+    },
+    Run {
+        #[arg(long, short)]
+        verbose: bool,
+    },
     ResolvePackages,
+    /// Copy this executable to ~/.ios-runner/bin/ios-runner
+    InstallSelf,
+    /// Add iOS-Runner tasks to ~/.config/zed/tasks.json (all projects)
+    InstallZedTasks,
     List {
         #[arg(long, default_value = "schemes")]
         what: String,
@@ -48,17 +67,21 @@ fn main() -> Result<()> {
         Commands::Doctor => cmd_doctor(&root),
         Commands::Init { pick } => cmd_init(&root, pick),
         Commands::Ensure => cmd_init_ensure(&root),
-        Commands::Configure => cmd_configure(&root),
+        Commands::Configure { run, no_run } => cmd_configure(&root, run, no_run),
         Commands::Mcp => mcp::run_mcp(),
-        Commands::Build => {
+        Commands::InstallSelf => cmd_install_self(),
+        Commands::InstallZedTasks => cmd_install_zed_tasks(),
+        Commands::Build { verbose } => {
+            set_verbose_logs(verbose);
             let config = RunnerConfig::load(&root)?;
             config.validate(&root)?;
             build_project(&root, &config)
         }
-        Commands::Run => {
+        Commands::Run { verbose } => {
+            set_verbose_logs(verbose);
             let config = RunnerConfig::load(&root)?;
             config.validate(&root)?;
-            run_on_simulator(&root, &config)
+            run_app(&root, &config)
         }
         Commands::ResolvePackages => {
             let config = RunnerConfig::load(&root)?;
@@ -71,6 +94,35 @@ fn main() -> Result<()> {
 
 fn workspace_root() -> Result<PathBuf> {
     env::current_dir().context("current directory")
+}
+
+fn set_verbose_logs(verbose: bool) {
+    if verbose {
+        std::env::set_var("IOS_RUNNER_RAW_LOG", "1");
+    }
+}
+
+fn cmd_install_zed_tasks() -> Result<()> {
+    let path = install_global_zed_tasks()?;
+    eprintln!("✓ iOS-Runner 任务已写入 {}", path.display());
+    eprintln!("  重新打开 Zed 或任意工程，Run 面板应出现 iOS-Runner 任务。");
+    Ok(())
+}
+
+fn cmd_install_self() -> Result<()> {
+    let exe = env::current_exe().context("current executable")?;
+    let home = dirs::home_dir().context("home directory")?;
+    let dest_dir = home.join(ios_runner_core::INSTALL_DIR);
+    std::fs::create_dir_all(&dest_dir).context("create install dir")?;
+    let dest = dest_dir.join("ios-runner");
+    std::fs::copy(&exe, &dest).context("copy binary")?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755))?;
+    }
+    eprintln!("✓ Installed {}", dest.display());
+    Ok(())
 }
 
 fn cmd_doctor(root: &PathBuf) -> Result<()> {
@@ -125,7 +177,7 @@ fn cmd_doctor(root: &PathBuf) -> Result<()> {
 
 fn cmd_init(root: &PathBuf, pick: bool) -> Result<()> {
     let config = if pick {
-        configure_project(root)?
+        configure_project(root, None)?
     } else {
         ensure_project(root)?;
         RunnerConfig::load(root)?
@@ -149,12 +201,15 @@ fn cmd_init_ensure(root: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_configure(root: &PathBuf) -> Result<()> {
-    let config = configure_project(root)?;
-    let project = detect_project(root)?;
-    eprintln!("\niOS-Runner configured.");
-    print_config_summary(&config, project.has_podfile);
-    print_keybind_hint();
+fn cmd_configure(root: &PathBuf, run: bool, no_run: bool) -> Result<()> {
+    let run_after = if run {
+        Some(true)
+    } else if no_run {
+        Some(false)
+    } else {
+        None
+    };
+    configure_project(root, run_after)?;
     Ok(())
 }
 
@@ -186,7 +241,21 @@ fn cmd_list(root: &PathBuf, what: &str) -> Result<()> {
             let sims = list_simulators()?;
             println!("{}", serde_json::to_string_pretty(&sims)?);
         }
-        _ => bail!("unknown list target: {what} (try: schemes, simulators)"),
+        "destinations" => {
+            let project = detect_project(root)?;
+            let scheme = if let Ok(c) = RunnerConfig::load(root) {
+                c.scheme
+            } else {
+                let schemes = list_schemes(root, &project)?;
+                schemes
+                    .into_iter()
+                    .find(|s| !s.starts_with("Pods-"))
+                    .context("no scheme")?
+            };
+            let dests = list_run_destinations(root, &project, &scheme)?;
+            println!("{}", serde_json::to_string_pretty(&dests)?);
+        }
+        _ => bail!("unknown list target: {what} (try: schemes, simulators, destinations)"),
     }
     Ok(())
 }

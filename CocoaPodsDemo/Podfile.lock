@@ -1,0 +1,16 @@
+PODS:
+  - SwiftyJSON (5.0.2)
+
+DEPENDENCIES:
+  - SwiftyJSON (~> 5.0)
+
+SPEC REPOS:
+  trunk:
+    - SwiftyJSON
+
+SPEC CHECKSUMS:
+  SwiftyJSON: f5b1bf1cd8dd53cd25887ac0eabcfd92301c6a5a
+
+PODFILE CHECKSUM: 64e98b0ed24be2d05081ac71334734ead5364111
+
+COCOAPODS: 1.16.2

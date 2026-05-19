@@ -26,6 +26,9 @@ pub struct RunnerConfig {
     pub resolve_packages_before_build: bool,
     #[serde(default = "default_true")]
     pub bring_simulator_to_foreground: bool,
+    /// Apple Developer Team ID (required for physical device builds).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub development_team: Option<String>,
 }
 
 fn default_resolve_packages() -> bool {
@@ -52,13 +55,43 @@ impl RunnerConfig {
         let path = config_path(root)?;
         let text = std::fs::read_to_string(&path)
             .with_context(|| format!("missing config; run `ios-runner init` ({})", path.display()))?;
-        toml::from_str(&text).context("parse ios-runner config")
+        let mut config: RunnerConfig = toml::from_str(&text).context("parse ios-runner config")?;
+        config.normalize();
+        Ok(config)
+    }
+
+    /// Fix legacy paths / destinations written by older ios-runner versions.
+    pub fn normalize(&mut self) {
+        if self.path.ends_with(".xcodeproj/project.xcworkspace") {
+            self.path = self
+                .path
+                .trim_end_matches("/project.xcworkspace")
+                .to_string();
+            self.kind = ProjectKind::Project;
+        }
+
+        if self.destination.contains("Simulator") && self.destination.contains("id=") {
+            if let Some(name) = destination_name(&self.destination) {
+                self.destination = format!("platform=iOS Simulator,name={name}");
+            }
+        }
     }
 
     pub fn save(&self, root: &Path) -> Result<()> {
+        let mut config = self.clone();
+        config.normalize();
         let path = root.join(Self::FILE_NAME);
-        let text = toml::to_string_pretty(self).context("serialize config")?;
+        let text = toml::to_string_pretty(&config).context("serialize config")?;
         std::fs::write(&path, text).with_context(|| format!("write {}", path.display()))
+    }
+
+    pub fn device_summary(&self) -> String {
+        let name = destination_name(&self.destination).unwrap_or_else(|| "?".into());
+        if self.destination.contains("Simulator") {
+            format!("模拟器 {name}")
+        } else {
+            format!("真机 {name}")
+        }
     }
 
     pub fn project_path(&self, root: &Path) -> PathBuf {
@@ -76,6 +109,14 @@ impl RunnerConfig {
         }
         Ok(())
     }
+}
+
+fn destination_name(destination: &str) -> Option<String> {
+    destination.split(',').find_map(|part| {
+        let part = part.trim();
+        part.strip_prefix("name=")
+            .map(|s| s.trim().to_string())
+    })
 }
 
 fn config_path(root: &Path) -> Result<PathBuf> {
