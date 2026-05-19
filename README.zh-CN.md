@@ -19,6 +19,16 @@ ios-runner install-zed-tasks
 
 没有 `ios-runner` 时，可先在 Zed **终端**里用开发者方式安装 CLI，再执行上面命令。
 
+### 卸载
+
+```bash
+ios-runner uninstall                      # 默认：删 CLI、Zed 任务/快捷键、全局配置
+ios-runner uninstall --keep-config        # 保留 ~/.config/ios-runner/
+ios-runner uninstall --purge-derived-data # 同时删除 ~/.ios-runner/DerivedData/
+```
+
+Zed 里的 **iOS-Runner 扩展**需在 **Extensions** 面板手动禁用或卸载（命令行无法代劳）。
+
 ---
 
 ## 使用

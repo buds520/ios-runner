@@ -7,7 +7,8 @@ use clap::{Parser, Subcommand};
 use ios_runner_core::{
     RunnerConfig, build_project, configure_project, detect_project, ensure_project,
     init_locale, install_global_zed_keymap, install_global_zed_tasks, list_run_destinations,
-    list_schemes, list_simulators, resolve_packages, run_app, t,
+    list_schemes, list_simulators, resolve_packages, run_app, t, tf, uninstall_ios_runner,
+    UninstallOptions,
 };
 
 mod mcp;
@@ -53,6 +54,15 @@ enum Commands {
     InstallSelf,
     /// Add iOS-Runner tasks to ~/.config/zed/tasks.json (all projects)
     InstallZedTasks,
+    /// Remove CLI, Zed tasks/keymap, and global config from this machine
+    Uninstall {
+        /// Keep ~/.config/ios-runner/ (scheme/device settings)
+        #[arg(long)]
+        keep_config: bool,
+        /// Also delete ~/.ios-runner/DerivedData/ (build cache)
+        #[arg(long)]
+        purge_derived_data: bool,
+    },
     List {
         #[arg(long, default_value = "schemes")]
         what: String,
@@ -72,6 +82,10 @@ fn main() -> Result<()> {
         Commands::Mcp => mcp::run_mcp(),
         Commands::InstallSelf => cmd_install_self(),
         Commands::InstallZedTasks => cmd_install_zed_tasks(),
+        Commands::Uninstall {
+            keep_config,
+            purge_derived_data,
+        } => cmd_uninstall(keep_config, purge_derived_data),
         Commands::Build { verbose } => {
             set_verbose_logs(verbose);
             let config = load_config(&root)?;
@@ -109,6 +123,7 @@ fn set_verbose_logs(verbose: bool) {
 
 fn cmd_install_zed_tasks() -> Result<()> {
     let tasks = install_global_zed_tasks()?;
+    warn_legacy_project_tasks()?;
     let keymap = install_global_zed_keymap()?;
     eprintln!(
         "{} {}",
@@ -133,6 +148,70 @@ fn cmd_install_zed_tasks() -> Result<()> {
         t(
             "    Cmd+Shift+I  选设备 Cmd+Shift+E  初始化工程",
             "    Cmd+Shift+I  Device   Cmd+Shift+E  Setup",
+        )
+    );
+    Ok(())
+}
+
+fn warn_legacy_project_tasks() -> Result<()> {
+    let cwd = env::current_dir().context("current directory")?;
+    let path = cwd.join(".zed/tasks.json");
+    if !path.is_file() {
+        return Ok(());
+    }
+    let text = std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+    if text.contains("正在下载命令行工具")
+        || text.contains("curl -fsSL")
+        || text.contains("$ir_bin")
+        || text.contains("$IOS_RUNNER")
+    {
+        eprintln!(
+            "{}",
+            tf(
+                || format!(
+                    "⚠ 工程内 {} 仍是旧版下载脚本，会覆盖全局任务体验。可删除该文件或设置 IOS_RUNNER_WRITE_PROJECT_TASKS=1 后执行 ios-runner ensure 重写。",
+                    path.display()
+                ),
+                || format!(
+                    "⚠ Project {} still uses legacy download scripts. Delete it or run `ios-runner ensure` with IOS_RUNNER_WRITE_PROJECT_TASKS=1.",
+                    path.display()
+                ),
+            )
+        );
+    }
+    Ok(())
+}
+
+fn cmd_uninstall(keep_config: bool, purge_derived_data: bool) -> Result<()> {
+    let report = uninstall_ios_runner(&UninstallOptions {
+        keep_config,
+        purge_derived_data,
+    })?;
+
+    eprintln!("{}", t("已卸载 iOS-Runner：", "Uninstalled iOS-Runner:"));
+    if report.removed.is_empty() {
+        eprintln!(
+            "{}",
+            t("  （未发现已安装的文件）", "  (nothing to remove)")
+        );
+    } else {
+        for path in &report.removed {
+            eprintln!("  - {path}");
+        }
+    }
+    if !report.skipped.is_empty() {
+        eprintln!();
+        eprintln!("{}", t("保留项：", "Kept:"));
+        for path in &report.skipped {
+            eprintln!("  - {path}");
+        }
+    }
+    eprintln!();
+    eprintln!(
+        "{}",
+        t(
+            "请在 Zed → Extensions 中手动禁用或卸载「iOS-Runner」扩展。",
+            "In Zed → Extensions, disable or uninstall the「iOS-Runner」extension manually.",
         )
     );
     Ok(())

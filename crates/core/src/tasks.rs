@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde_json::json;
 
-use crate::bootstrap::{lang_for_task_script, zed_task_preamble};
+use crate::bootstrap::{CLI_PATH_SHELL, lang_for_task_script, zed_task_preamble};
 use crate::detect::DetectedProject;
 use crate::locale::Lang;
 
@@ -31,7 +31,7 @@ pub fn shell_task(label: &str, subcommand: &str) -> serde_json::Value {
 pub fn shell_task_with_lang(label: &str, subcommand: &str, lang: Lang) -> serde_json::Value {
     let preamble = zed_task_preamble(lang);
     let script = format!(
-        "{preamble}\nexport IOS_RUNNER_RAW_LOG=1\ncd \"$ZED_WORKTREE_ROOT\" && \"$ir_bin\" ensure && \"$ir_bin\" {subcommand}"
+        "{preamble}\nexport IOS_RUNNER_RAW_LOG=1\ncd \"${{ZED_WORKTREE_ROOT}}\" && {CLI_PATH_SHELL} ensure && {CLI_PATH_SHELL} {subcommand}"
     );
     let mut map = zed_task_shell_fields(script);
     map.insert("label".into(), json!(label));
@@ -55,7 +55,7 @@ pub fn write_zed_tasks(root: &Path, project: &DetectedProject) -> Result<()> {
 
     if project.has_podfile {
         let preamble = zed_task_preamble(lang);
-        let script = format!("{preamble}\ncd \"$ZED_WORKTREE_ROOT\" && pod install");
+        let script = format!("{preamble}\ncd \"${{ZED_WORKTREE_ROOT}}\" && pod install");
         let mut map = zed_task_shell_fields(script);
         map.insert("label".into(), json!("iOS-Runner: Pod Install"));
         tasks.push(serde_json::Value::Object(map));

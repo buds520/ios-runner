@@ -4,6 +4,8 @@ use anyhow::Result;
 
 use crate::config::RunnerConfig;
 use crate::detect::{create_config, detect_project};
+use crate::destination::validate_xcodebuild_destination;
+use crate::xcodebuild::default_simulator_destination;
 use crate::global_store::{
     canonical_root, config_file_path, load_config, load_global_file, save_config,
     should_write_project_tasks,
@@ -40,7 +42,14 @@ pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
         write_zed_tasks(root, &project)?;
     }
 
-    let config = load_config(root)?;
+    let mut config = load_config(root)?;
+    if validate_xcodebuild_destination(&config.destination).is_err() {
+        if let Ok(dest) = default_simulator_destination(root, &project, &config.scheme) {
+            config.destination = dest;
+            config.save(root)?;
+            wrote_config = true;
+        }
+    }
 
     Ok(EnsureReport {
         scheme: config.scheme,

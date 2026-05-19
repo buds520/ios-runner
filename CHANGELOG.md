@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.2.2] - 2026-05-19
+
+### Added
+- `ios-runner uninstall` — remove CLI, Zed tasks/keymap, and global config (`--keep-config`, `--purge-derived-data`)
+- Zed extension ships macOS CLI in `bin/` (offline install to `~/.ios-runner/bin` on load)
+
+### Fixed
+- Invalid `destination` for xcodebuild (`key=value` format, reject placeholder simulators)
+- `ensure` replaces invalid saved destination with a real default simulator
+- Simulator log stream: `exec` `simctl launch --console-pty` so Ctrl+C stops the log (Zed terminal)
+- Zed tasks: no `curl` download; use `$HOME` / quoted paths (Zed variable expansion safe)
+- Boot simulator when already Booted no longer fails
+
+### Changed
+- Extension bootstrap installs bundled CLI once per version; GitHub download only as fallback
+- Zed task schema `tasks-v6-quoted-home`; removed legacy project `.zed/tasks.json` from demo
+
 ## [0.2.1] - 2026-05-19
 
 ### Fixed

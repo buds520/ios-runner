@@ -11,10 +11,12 @@ cd /Users/xj/Documents/iOS-Runner
 # 1. 本地 extensions 仓库（fork）
 export EXTENSIONS_REPO="$HOME/extensions"   # 默认 ~/extensions
 
-# 2. 发布 0.2.0：改版本号 → commit → tag → push → GitHub Release → 更新审核 PR
+# 2. 发布（需 macOS）：改版本 → 编译 CLI 打入 bin/ → commit → tag → push → Release → 更新审核 PR
 chmod +x scripts/*.sh
-./scripts/release.sh 0.2.0
+./scripts/release.sh 0.2.2
 ```
+
+`release.sh` 会调用 `bundle-cli-for-extension.sh`，把 `ios-runner-aarch64-apple-darwin` / `x86_64` 放进仓库 `bin/`，随 Zed 扩展一起分发，用户**无需**首次联网下载 CLI。
 
 仅本地打 tag、不推送：
 
@@ -55,7 +57,7 @@ chmod +x scripts/*.sh
 
 ```bash
 git push origin main
-./scripts/release.sh 0.2.1   # 或只 git push tag，Actions 会跟
+./scripts/release.sh 0.2.2   # 或只 git push tag，Actions 会跟
 ```
 
 也可在 Actions 里手动运行 **Publish Zed Extension**，填写版本号。

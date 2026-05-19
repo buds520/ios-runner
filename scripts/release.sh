@@ -29,7 +29,11 @@ fi
 echo "→ Bump manifests to ${VERSION}"
 "$ROOT/scripts/bump-version.sh" "$VERSION"
 
-git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md 2>/dev/null || true
+echo "→ Bundle macOS CLI into extension bin/ (offline install)"
+chmod +x "$ROOT/scripts/bundle-cli-for-extension.sh"
+"$ROOT/scripts/bundle-cli-for-extension.sh" "$VERSION"
+
+git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md bin/ 2>/dev/null || true
 git add -u
 
 if git diff --staged --quiet && git rev-parse "$TAG" >/dev/null 2>&1; then

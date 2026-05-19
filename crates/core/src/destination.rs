@@ -161,3 +161,125 @@ pub fn device_udid_from_destination(destination: &str) -> Result<String> {
 pub fn is_simulator_destination(destination: &str) -> bool {
     destination.contains("Simulator")
 }
+
+/// Human-readable device/simulator name from either `key=value` or legacy `key:value` strings.
+pub fn destination_display_name(destination: &str) -> Option<String> {
+    parse_destination_fields(destination).and_then(|f| f.name)
+}
+
+/// Whether this destination cannot be used for build/run (Xcode placeholders).
+pub fn is_placeholder_destination(destination: &str) -> bool {
+    let Some(fields) = parse_destination_fields(destination) else {
+        return destination.contains("placeholder")
+            || destination.contains("Any iOS Simulator Device");
+    };
+    fields.id.is_some_and(|id| id.contains("placeholder"))
+        || fields
+            .name
+            .is_some_and(|n| n.contains("placeholder") || n == "Any iOS Simulator Device")
+}
+
+/// Convert stored destination to `xcodebuild -destination` form (`key=value` pairs).
+pub fn normalize_xcodebuild_destination(destination: &str) -> Option<String> {
+    if is_placeholder_destination(destination) {
+        return None;
+    }
+    let fields = parse_destination_fields(destination)?;
+
+    let platform = fields.platform?;
+    let name = fields.name?;
+
+    if platform.contains("Simulator") {
+        return Some(format!("platform=iOS Simulator,name={name}"));
+    }
+    if platform == "iOS" {
+        if let Some(id) = fields.id.filter(|i| !i.contains("placeholder")) {
+            return Some(format!("platform=iOS,id={id},name={name}"));
+        }
+        return Some(format!("platform=iOS,name={name}"));
+    }
+    None
+}
+
+/// Validate before invoking xcodebuild.
+pub fn validate_xcodebuild_destination(destination: &str) -> Result<()> {
+    if destination.trim().is_empty() {
+        bail_invalid_destination(destination, "empty")?;
+    }
+    if is_placeholder_destination(destination) {
+        bail_invalid_destination(
+            destination,
+            "placeholder (not a real simulator or device)",
+        )?;
+    }
+    if !destination.contains('=') {
+        bail_invalid_destination(destination, "expected key=value pairs")?;
+    }
+    for part in destination.split(',') {
+        let part = part.trim();
+        if part.is_empty() || !part.contains('=') {
+            bail_invalid_destination(destination, "malformed destination segment")?;
+        }
+    }
+    Ok(())
+}
+
+fn bail_invalid_destination(destination: &str, reason: &str) -> Result<()> {
+    anyhow::bail!(
+        "{}",
+        crate::locale::tf(
+            || format!(
+                "运行目标（destination）无效：{reason}\n  当前值: {destination}\n  请执行: ios-runner configure --run\n  或在 Zed 中运行「iOS-Runner: Select Scheme & Device」重新选择模拟器/真机。",
+            ),
+            || format!(
+                "Invalid run destination: {reason}\n  Current: {destination}\n  Run: ios-runner configure --run\n  Or use the Zed task「iOS-Runner: Select Scheme & Device」.",
+            ),
+        )
+    )
+}
+
+struct DestinationFields {
+    platform: Option<String>,
+    name: Option<String>,
+    id: Option<String>,
+}
+
+fn parse_destination_fields(destination: &str) -> Option<DestinationFields> {
+    let mut platform = None;
+    let mut name = None;
+    let mut id = None;
+
+    for part in destination.split(',') {
+        let part = part.trim();
+        if let Some((k, v)) = part.split_once('=') {
+            apply_field(k.trim(), v.trim(), &mut platform, &mut name, &mut id);
+        } else if let Some((k, v)) = part.split_once(':') {
+            apply_field(k.trim(), v.trim(), &mut platform, &mut name, &mut id);
+        }
+    }
+
+    if platform.is_some() || name.is_some() {
+        Some(DestinationFields {
+            platform,
+            name,
+            id,
+        })
+    } else {
+        None
+    }
+}
+
+fn apply_field(
+    key: &str,
+    value: &str,
+    platform: &mut Option<String>,
+    name: &mut Option<String>,
+    id: &mut Option<String>,
+) {
+    match key {
+        "platform" => *platform = Some(value.to_string()),
+        "name" => *name = Some(value.to_string()),
+        "id" => *id = Some(value.to_string()),
+        _ => {}
+    }
+}

@@ -8,7 +8,10 @@ use serde::Deserialize;
 use crate::build_settings::launch_artifacts;
 use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
-use crate::destination::{device_udid_from_destination, is_simulator_destination};
+use crate::destination::{
+    DestinationKind, device_udid_from_destination, is_simulator_destination,
+    list_run_destinations,
+};
 use crate::device::{ensure_device_ready, report_devicectl_failure};
 use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
 use crate::locale::t;
@@ -46,28 +49,20 @@ pub fn default_simulator_destination(
     project: &DetectedProject,
     scheme: &str,
 ) -> Result<String> {
-    let mut cmd = Command::new("xcodebuild");
-    add_project_args(&mut cmd, project);
-    cmd.args(["-scheme", scheme, "-showdestinations"]);
+    let destinations = list_run_destinations(root, project, scheme)?;
 
-    let output = cmd
-        .current_dir(root)
-        .output()
-        .context("run xcodebuild -showdestinations")?;
+    if let Some(d) = destinations
+        .iter()
+        .find(|d| d.kind == DestinationKind::Simulator && d.name.starts_with("iPhone"))
+    {
+        return Ok(d.destination.clone());
+    }
 
-    let text = format!(
-        "{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed.contains("platform:iOS Simulator") && trimmed.contains("name:") {
-            if let Some(dest) = extract_braced_destination(trimmed) {
-                return Ok(dest);
-            }
-        }
+    if let Some(d) = destinations
+        .iter()
+        .find(|d| d.kind == DestinationKind::Simulator)
+    {
+        return Ok(d.destination.clone());
     }
 
     if let Ok(sims) = list_simulators() {
@@ -85,16 +80,6 @@ pub fn default_simulator_destination(
     )
 }
 
-fn extract_braced_destination(line: &str) -> Option<String> {
-    let start = line.find('{')? + 1;
-    let end = line.rfind('}')?;
-    let inner = line[start..end].trim();
-    if inner.is_empty() {
-        return None;
-    }
-    Some(inner.to_string())
-}
-
 pub fn resolve_packages(root: &Path, config: &RunnerConfig) -> Result<()> {
     let mut cmd = Command::new("xcodebuild");
     add_config_args(&mut cmd, config);
@@ -104,6 +89,8 @@ pub fn resolve_packages(root: &Path, config: &RunnerConfig) -> Result<()> {
 }
 
 pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
+    config.validate(root)?;
+
     section(
         t("编译", "Build"),
         Some(&format!("{} · {}", config.scheme, config.device_summary())),
@@ -215,31 +202,20 @@ pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
     section(
         t("应用日志", "App log"),
         Some(t(
-            "点击 App 内按钮，输出会显示在下方 · Ctrl+C 结束",
-            "Tap buttons in the app to see output below · Ctrl+C to stop",
+            "点击 App 内按钮，输出会显示在下方 · Ctrl+C 结束日志（并停止 App）",
+            "Tap buttons in the app to see output below · Ctrl+C stops logging (and the app)",
         )),
     );
     info(&format!("{} {bundle_id}", t("启动", "Launch")));
-    let status = Command::new("xcrun")
-        .args([
-            "simctl",
-            "launch",
-            "--console-pty",
-            "--terminate-running-process",
-            &device_udid,
-            &bundle_id,
-        ])
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .context("simctl launch")?;
-    if !status.success() {
-        bail!("simctl launch failed");
-    }
-
-    success(t("✓ 已启动（模拟器）", "✓ Launched on simulator"));
-    Ok(())
+    // exec replaces this process so Ctrl+C reaches simctl (works in Zed tasks too).
+    exec_inherited("xcrun", [
+        "simctl",
+        "launch",
+        "--console-pty",
+        "--terminate-running-process",
+        &device_udid,
+        &bundle_id,
+    ])
 }
 
 pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
@@ -286,8 +262,9 @@ pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
         Some(t("Ctrl+C 结束", "Ctrl+C to stop")),
     );
     info(&format!("{} {bundle_id}", t("启动", "Launch")));
-    let launch_status = Command::new("xcrun")
-        .args([
+    if let Err(e) = exec_inherited(
+        "xcrun",
+        [
             "devicectl",
             "device",
             "process",
@@ -297,19 +274,12 @@ pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
             "--console",
             "--terminate-existing",
             &bundle_id,
-        ])
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .context("devicectl launch")?;
-    if !launch_status.success() {
+        ],
+    ) {
         let _ = ensure_device_ready(&device_id);
         warn_device_launch_hints();
-        bail!("{}", t("启动应用失败", "Failed to launch app"));
+        return Err(e);
     }
-
-    success(t("✓ 已启动（真机）", "✓ Launched on device"));
     Ok(())
 }
 
@@ -360,10 +330,49 @@ fn simulator_udid_for_destination(destination: &str) -> Result<String> {
 }
 
 fn boot_simulator(udid: &str) -> Result<()> {
-    let _ = Command::new("xcrun")
+    let output = Command::new("xcrun")
         .args(["simctl", "boot", udid])
-        .status();
+        .output()
+        .context("simctl boot")?;
+    if output.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if stderr.contains("current state: Booted") || stderr.contains("Unable to boot device in current state: Booted")
+    {
+        return Ok(());
+    }
+    if !stderr.trim().is_empty() {
+        warn(stderr.trim());
+    }
     Ok(())
+}
+
+/// Run a foreground tool with inherited stdio; on macOS use exec so Ctrl+C stops the child directly.
+fn exec_inherited(program: &str, args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> Result<()> {
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    cmd.stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let label = format!("{program} (exec)");
+        let err = cmd.exec();
+        bail!("{label} failed: {err}");
+    }
+
+    #[cfg(not(unix))]
+    {
+        let status = cmd.status().with_context(|| format!("{program}"))?;
+        if status.success() {
+            Ok(())
+        } else {
+            bail!("{program} failed (exit {:?})", status.code())
+        }
+    }
 }
 
 pub(crate) fn add_project_args(cmd: &mut Command, project: &DetectedProject) {
@@ -401,8 +410,15 @@ fn run_command(mut cmd: Command, root: &Path, label: &str) -> Result<()> {
     if status.success() {
         Ok(())
     } else {
-        bail!("{label} failed (exit {:?})", status.code())
+        bail!("{}", xcodebuild_failure_message(label, status.code()))
     }
+}
+
+fn xcodebuild_failure_message(label: &str, code: Option<i32>) -> String {
+    crate::locale::tf(
+        || format!("{label} 失败 (exit {code:?})"),
+        || format!("{label} failed (exit {code:?})"),
+    )
 }
 
 fn which_xcbeautify() -> bool {

@@ -8,7 +8,28 @@
 | 环境变量（优先） | `export IOS_RUNNER_LANG=en` |
 | Zed 任务 `env` | 在 `tasks.json` 里对任务加 `"env": { "IOS_RUNNER_LANG": "en" }` |
 
-改完后重新跑任务，或执行 `ios-runner ensure` 以按新语言重写 `.zed/tasks.json` 里的下载脚本。
+改完后重新跑任务，或执行 `ios-runner install-zed-tasks` 刷新全局任务脚本。
+
+**注意**：Zed 会在执行前展开任务里的 `$变量`（仅保留环境变量与 `ZED_*`）。任务脚本因此使用 `$HOME/.ios-runner/bin/ios-runner`，不要用自定义名如 `$ir_bin`（会被替换成空，出现 `chmod: : No such file or directory`）。
+
+### 仍提示「正在下载」？
+
+1. 刷新全局任务：`ios-runner install-zed-tasks`（或重载扩展）
+2. **删除工程内** `.zed/tasks.json`（会优先于全局任务，旧文件里常有 curl 下载脚本）
+3. 确认 CLI 正常：`ls -l ~/.ios-runner/bin/ios-runner`（应约 2MB，不是几十 KB）
+4. 重装 CLI：`cp ios-runner/bin/ios-runner-$(uname -m | sed 's/arm64/aarch64-apple-darwin/;s/x86_64/x86_64-apple-darwin/') ~/.ios-runner/bin/ios-runner` 或 `ios-runner install-self`
+
+## CLI 安装（零配置）
+
+从市场安装扩展后，**首次加载**会把插件包里的 macOS CLI 复制到 `~/.ios-runner/bin/ios-runner`（**无需联网、无需 cargo**）。
+
+| 步骤 | 说明 |
+|------|------|
+| 装扩展 | Zed 扩展市场安装 iOS-Runner |
+| 打开工程 | 扩展自动安装 CLI + 写入全局任务 |
+| 点 Run | 直接编译运行，任务里**不再** `curl` 下载 |
+
+仅当扩展包未含 `bin/`（例如裸 git 开发）时，扩展会回退从 GitHub Release 下载。
 
 ## 全局配置（默认，不改工程目录）
 

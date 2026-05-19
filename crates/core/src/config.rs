@@ -83,10 +83,10 @@ impl RunnerConfig {
             self.kind = ProjectKind::Project;
         }
 
-        if self.destination.contains("Simulator") && self.destination.contains("id=") {
-            if let Some(name) = destination_name(&self.destination) {
-                self.destination = format!("platform=iOS Simulator,name={name}");
-            }
+        if let Some(fixed) =
+            crate::destination::normalize_xcodebuild_destination(&self.destination)
+        {
+            self.destination = fixed;
         }
     }
 
@@ -110,11 +110,12 @@ impl RunnerConfig {
 
     pub fn device_summary(&self) -> String {
         use crate::locale::t;
-        let name = destination_name(&self.destination).unwrap_or_else(|| "?".into());
-        if self.destination.contains("Simulator") {
-            format!("{} {name}", t("模拟器", "Simulator"))
+        let name = crate::destination::destination_display_name(&self.destination)
+            .unwrap_or_else(|| "?".into());
+        if self.destination.contains("Simulator") || self.destination.contains("Simulator:") {
+            format!("{} · {name}", t("模拟器", "Simulator"),)
         } else {
-            format!("{} {name}", t("真机", "Device"))
+            format!("{} · {name}", t("真机", "Device"))
         }
     }
 
@@ -146,16 +147,9 @@ impl RunnerConfig {
         if !project.exists() {
             bail!("project path does not exist: {}", project.display());
         }
+        crate::destination::validate_xcodebuild_destination(&self.destination)?;
         Ok(())
     }
-}
-
-fn destination_name(destination: &str) -> Option<String> {
-    destination.split(',').find_map(|part| {
-        let part = part.trim();
-        part.strip_prefix("name=")
-            .map(|s| s.trim().to_string())
-    })
 }
 
 fn local_config_path(root: &Path) -> Result<PathBuf> {
