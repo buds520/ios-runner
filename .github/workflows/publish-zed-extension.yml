@@ -14,8 +14,12 @@ on:
 permissions:
   contents: read
 
+# Optional: set secret EXTENSIONS_DEPLOY_TOKEN (PAT with push to buds520/extensions).
+# Without it, run ./scripts/update-zed-extensions-pr.sh locally after each release.
+
 jobs:
   update-extensions-pr:
+    if: ${{ secrets.EXTENSIONS_DEPLOY_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Resolve version
