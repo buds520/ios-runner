@@ -8,6 +8,7 @@ use serde::Deserialize;
 use crate::build_settings::launch_artifacts;
 use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
+use crate::simulator::udid_for_destination_name;
 
 pub fn list_schemes(root: &Path, project: &DetectedProject) -> Result<Vec<String>> {
     let mut cmd = Command::new("xcodebuild");
@@ -165,29 +166,10 @@ fn simulator_udid_for_destination(destination: &str) -> Result<String> {
         .split(',')
         .find_map(|part| {
             let part = part.trim();
-            part.strip_prefix("name=").map(|s| s.trim().to_string())
+            part.strip_prefix("name=").map(|s| s.trim())
         })
-        .unwrap_or_else(|| "iPhone 16".to_string());
-
-    let output = Command::new("xcrun")
-        .args(["simctl", "list", "devices", "available", "-j"])
-        .output()
-        .context("simctl list devices")?;
-
-    let parsed: SimctlList = serde_json::from_slice(&output.stdout).context("parse simctl JSON")?;
-
-    for devices in parsed.devices.values() {
-        for device in devices {
-            if device.is_available == Some(false) {
-                continue;
-            }
-            if device.name == name {
-                return Ok(device.udid.clone());
-            }
-        }
-    }
-
-    bail!("simulator not found for destination name={name}");
+        .unwrap_or("iPhone 16");
+    udid_for_destination_name(name)
 }
 
 fn boot_simulator(udid: &str) -> Result<()> {
@@ -299,15 +281,3 @@ struct WorkspaceList {
     schemes: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SimctlList {
-    devices: std::collections::HashMap<String, Vec<SimDevice>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SimDevice {
-    name: String,
-    udid: String,
-    #[serde(rename = "isAvailable")]
-    is_available: Option<bool>,
-}

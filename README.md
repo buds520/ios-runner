@@ -1,56 +1,63 @@
 # iOS-Runner
 
-在 [Zed](https://zed.dev/) 里开发 **iOS Xcode 工程**：扩展市场搜索 **iOS-Runner** → 打开工程 → **编译 / 运行**（模拟器）。
+在 [Zed](https://zed.dev/) 里 **编译 / 运行** iOS Xcode 工程（模拟器）。
 
-## 快速开始
+---
 
-### 1. 安装扩展
+## 用户怎么用（最短版）
 
-Zed → **Extensions** → 搜索 **iOS-Runner** → Install  
+**环境**：macOS + 已安装 Xcode。
 
-（开发：`Install Dev Extension` → 选仓库根目录 `/Users/xj/Documents/iOS-Runner`）
+1. **安装命令行**（Mac 上只需一次）  
+   ```bash
+   cargo install ios-runner --git https://github.com/buds520/ios-runner --locked
+   ```
 
-### 2. 安装 CLI
+2. **Zed** → **Extensions** → 搜索 **iOS-Runner** → Install  
+
+3. **打开工程**：File → Open Folder → 选含 `.xcodeproj` / `.xcworkspace` 的目录  
+   - 有 `Podfile` 时先在该目录执行：`pod install`
+
+4. **Settings** → **MCP** → 打开 **iOS-Runner**（会自动生成配置和任务）
+
+5. **（推荐）选 Scheme / 模拟器**  
+   ```bash
+   ios-runner configure
+   ```
+
+6. **运行**  
+   - `Cmd+Shift+P` → `task spawn` → **iOS-Runner: Run**  
+   - 或终端：`ios-runner run`  
+   - 只编译：**iOS-Runner: Build** / `ios-runner build`
+
+👉 图文步骤、快捷键、排错见 **[docs/QUICKSTART.md](docs/QUICKSTART.md)**
+
+---
+
+## 开发 / 上架
+
+| 文档 | 内容 |
+|------|------|
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | 用户上手 |
+| [docs/ZED_DEV_EXTENSION.md](docs/ZED_DEV_EXTENSION.md) | Dev Extension 调试 |
+| [docs/PUBLISHING.md](docs/PUBLISHING.md) | 提交 Zed 扩展市场 |
+| [docs/AGENTS.md](docs/AGENTS.md) | Agent 接续开发 |
+
+本地开发扩展：Zed → Install Dev Extension → 选本仓库根目录。
+
+安装 CLI 源码版：
 
 ```bash
-cd /Users/xj/Documents/iOS-Runner/crates
-cargo install --path cli --locked
+cd crates && cargo install --path cli --locked
 ```
 
-### 3. 打开 Xcode 工程并配置
-
-```bash
-cd /path/to/YourApp
-ios-runner init
-```
-
-### 4. 运行
-
-- `task: spawn` → **iOS-Runner: Run**
-- 或 `ios-runner run`
-
-```json
-"cmd-r": ["task::Spawn", { "task_name": "iOS-Runner: Run" }],
-"cmd-b": ["task::Spawn", { "task_name": "iOS-Runner: Build" }]
-```
-
-## 扩展 ID
+## 标识
 
 | 项 | 值 |
 |----|-----|
-| 市场搜索名 | **iOS-Runner** |
+| 市场名 | **iOS-Runner** |
 | extension id | `ios-runner` |
-| CLI | `ios-runner` |
 | 项目配置 | `.ios-runner.toml` |
-
-## 示例工程
-
-`XcodePilotDemo/` — 可在 Zed 中打开用于测试。
-
-## 文档
-
-- [docs/PUBLISHING.md](docs/PUBLISHING.md) — 上架 Zed 市场  
-- [docs/ZED_DEV_EXTENSION.md](docs/ZED_DEV_EXTENSION.md) — Dev Extension 排错  
 
 ## 许可
 

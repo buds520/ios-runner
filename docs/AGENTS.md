@@ -1,50 +1,67 @@
-# Agent 速览 — Xcode Pilot
+# Agent 速览 — iOS-Runner
 
 ## 仓库结构
 
 ```
-xcode-pilot/                 # 建议重命名 Git 仓库
-├── extension.toml           # Zed 扩展清单（id: xcode-pilot）
+ios-runner/                  # GitHub: buds520/ios-runner
+├── extension.toml           # Zed 扩展（id: ios-runner）
 ├── src/lib.rs               # Zed WASM 扩展入口
 ├── crates/
-│   ├── core/                # 工程检测、xcodebuild、写 tasks
-│   └── cli/                 # 用户命令 xcode-pilot
+│   ├── core/                # 工程检测、xcodebuild、configure、tasks
+│   └── cli/                 # 用户命令 ios-runner
 └── docs/
-    ├── DEVELOPMENT.md       # 设计与版本规划
+    ├── DEVELOPMENT.md
+    ├── SWEETPAD_REFERENCE.md
     └── AGENTS.md            # 本文件
 ```
 
 ## 关键约定
 
-- **配置**：项目根 `.xcode-pilot.toml`
-- **任务**：`.zed/tasks.json` 由 `xcode-pilot init` 生成，不手写
-- **构建产物**：`.xcode-pilot/DerivedData`（已 gitignore）
-- **CocoaPods**：有 `Podfile` 时必须用 workspace，且先 `pod install`
-- **扩展限制**：Zed WASM 不能写工作区文件；逻辑放在 CLI
+- **配置**：`.ios-runner.toml`（兼容读取 `.xcode-pilot.toml`）
+- **任务**：`.zed/tasks.json` 由 `init` / `configure` 生成
+- **DerivedData**：`.ios-runner/DerivedData`
+- **CocoaPods**：有 `Podfile` → workspace + `pod install`
+- **扩展限制**：WASM 不能写工作区；配置与 tasks 由 CLI 写入
 
-## SweetPad 对照
+## CLI 命令
 
-实现 iOS 构建/运行时优先阅读 `docs/SWEETPAD_REFERENCE.md`，避免重复造轮子或偏离业界做法。
+| 命令 | 说明 |
+|------|------|
+| `ios-runner configure` | 终端交互选择 scheme + 模拟器，写配置与 tasks |
+| `ios-runner init --pick` | 同上（首次配置推荐） |
+| `ios-runner init` / `ensure` | 自动检测 scheme/destination（MCP 也会触发 ensure） |
+| `ios-runner build` / `run` | 编译 / 编译并启动模拟器 |
+| `ios-runner list schemes` | JSON 列出 scheme |
+| `ios-runner list simulators` | JSON 列出可用模拟器 |
+| `ios-runner doctor` | 环境检查 |
 
 ## 常见修改点
 
 | 需求 | 文件 |
 |------|------|
-| 改检测规则 | `crates/core/src/detect.rs` |
-| 改 build/run | `crates/core/src/xcodebuild.rs` |
-| 改生成 tasks | `crates/core/src/tasks.rs` |
+| 工程检测 | `crates/core/src/detect.rs` |
+| 交互配置 | `crates/core/src/configure.rs`, `prompt.rs` |
+| build/run | `crates/core/src/xcodebuild.rs` |
+| 模拟器列表 | `crates/core/src/simulator.rs` |
+| Zed tasks | `crates/core/src/tasks.rs` |
 | 新子命令 | `crates/cli/src/main.rs` |
 
 ## 构建
 
 ```bash
-cargo build --workspace
-cargo test --workspace   # 若有测试
+cd crates && cargo build --workspace
+cargo install --path cli --locked
 ```
+
+扩展 WASM：仓库根 `cargo build --target wasm32-wasip2 --release`
+
+## 上架 Zed
+
+用户 fork [zed-industries/extensions](https://github.com/zed-industries/extensions)，在 `extensions/ios-runner` 加 submodule 指向 `buds520/ios-runner`，见 `docs/PUBLISHING.md`。
 
 ## 用户问题排查
 
-1. `xcode-pilot doctor`
-2. CocoaPods：`Pods/` 是否存在
-3. `destination` 是否与已安装模拟器名称一致（改 `.xcode-pilot.toml`）
-4. Zed 是否已将 `xcode-pilot` 加入 PATH
+1. `ios-runner doctor`
+2. scheme/模拟器不对 → `ios-runner configure`（需在终端，Zed task 会开新终端）
+3. CocoaPods：`Pods/` 是否存在
+4. PATH 含 `~/.cargo/bin` 的 `ios-runner`

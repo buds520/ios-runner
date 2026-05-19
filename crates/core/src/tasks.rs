@@ -28,6 +28,19 @@ pub fn write_zed_tasks(root: &Path, project: &DetectedProject) -> Result<()> {
     std::fs::create_dir_all(&zed_dir).context("create .zed directory")?;
 
     let mut tasks = vec![
+        json!({
+            "label": "iOS-Runner: Configure",
+            "command": "/bin/zsh",
+            "args": [
+                "-lc",
+                "export PATH=\"$HOME/.cargo/bin:$PATH\" && cd \"$ZED_WORKTREE_ROOT\" && ios-runner configure"
+            ],
+            "allow_concurrent_runs": false,
+            "reveal": "always",
+            "hide": "never",
+            "save": "all",
+            "use_new_terminal": true
+        }),
         shell_task("iOS-Runner: Build", "build"),
         shell_task("iOS-Runner: Run", "run"),
         shell_task("iOS-Runner: Resolve Swift Packages", "resolve-packages"),
