@@ -5,12 +5,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 
 use crate::config::RunnerConfig;
-use crate::detect::{DetectedProject, detect_project};
+use crate::detect::{detect_project, DetectedProject};
 
 const CONFIG_CACHE_TTL: Duration = Duration::from_secs(5);
 
@@ -163,8 +163,7 @@ fn open_config_locked() -> Result<(PathBuf, File)> {
         .truncate(false)
         .open(&path)
         .with_context(|| format!("open {}", path.display()))?;
-    file.lock_exclusive()
-        .context("lock global config")?;
+    file.lock_exclusive().context("lock global config")?;
     Ok((path, file))
 }
 
@@ -216,7 +215,11 @@ pub fn save_global_file(file: &GlobalConfigFile) -> Result<PathBuf> {
     })
 }
 
-fn finish_loaded_config(mut config: RunnerConfig, root: &Path, defaults: &GlobalDefaults) -> Result<RunnerConfig> {
+fn finish_loaded_config(
+    mut config: RunnerConfig,
+    root: &Path,
+    defaults: &GlobalDefaults,
+) -> Result<RunnerConfig> {
     config.derived_data = global_derived_data_path(root)?
         .to_string_lossy()
         .to_string();

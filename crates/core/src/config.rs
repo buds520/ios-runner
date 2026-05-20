@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,8 +66,8 @@ impl RunnerConfig {
     /// Read legacy project-local config only.
     pub fn load_local(root: &Path) -> Result<Self> {
         let path = local_config_path(root)?;
-        let text = std::fs::read_to_string(&path)
-            .with_context(|| format!("read {}", path.display()))?;
+        let text =
+            std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
         let mut config: RunnerConfig = toml::from_str(&text).context("parse ios-runner config")?;
         config.normalize();
         Ok(config)
@@ -83,8 +83,7 @@ impl RunnerConfig {
             self.kind = ProjectKind::Project;
         }
 
-        if let Some(fixed) =
-            crate::destination::normalize_xcodebuild_destination(&self.destination)
+        if let Some(fixed) = crate::destination::normalize_xcodebuild_destination(&self.destination)
         {
             self.destination = fixed;
         }
@@ -114,7 +113,8 @@ impl RunnerConfig {
             .unwrap_or_else(|| "?".into());
         if self.destination.contains("macOS") {
             format!("{} · {name}", t("Mac", "Mac"))
-        } else if self.destination.contains("Simulator") || self.destination.contains("Simulator:") {
+        } else if self.destination.contains("Simulator") || self.destination.contains("Simulator:")
+        {
             format!("{} · {name}", t("模拟器", "Simulator"),)
         } else {
             format!("{} · {name}", t("真机", "Device"))
@@ -165,10 +165,7 @@ fn local_config_path(root: &Path) -> Result<PathBuf> {
     }
     bail!(
         "{}",
-        crate::locale::t(
-            "缺少 .ios-runner.toml",
-            "missing .ios-runner.toml",
-        )
+        crate::locale::t("缺少 .ios-runner.toml", "missing .ios-runner.toml",)
     )
 }
 

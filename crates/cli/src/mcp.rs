@@ -3,8 +3,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use ios_runner_core::{
-    RunnerConfig, build_project, detect_project, ensure_project, install_global_zed_keymap,
-    install_global_zed_tasks, run_app,
+    build_project, detect_project, ensure_project, install_global_zed_keymap,
+    install_global_zed_tasks, run_app, RunnerConfig,
 };
 use serde_json::{json, Value};
 
@@ -20,10 +20,7 @@ pub fn run_mcp() -> Result<()> {
         }
         let request: Value = serde_json::from_str(&line).context("parse MCP request")?;
         let id = request.get("id").cloned();
-        let method = request
-            .get("method")
-            .and_then(|m| m.as_str())
-            .unwrap_or("");
+        let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
 
         let result = match method {
             "initialize" => {
@@ -179,16 +176,15 @@ fn auto_setup(root: &Path) -> String {
                     r.scheme, r.destination
                 )];
                 if r.wrote_config {
-                    parts.push(format!(
-                        "saved global config {}",
-                        r.global_config.display()
-                    ));
+                    parts.push(format!("saved global config {}", r.global_config.display()));
                 }
                 if r.wrote_tasks {
                     parts.push("created .zed/tasks.json (optional)".to_string());
                 }
                 if r.has_podfile {
-                    parts.push("Podfile detected: run「iOS-Runner: Pod Install」if needed".to_string());
+                    parts.push(
+                        "Podfile detected: run「iOS-Runner: Pod Install」if needed".to_string(),
+                    );
                 }
                 parts.join("; ")
             }

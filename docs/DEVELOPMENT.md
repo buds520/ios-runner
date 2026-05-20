@@ -59,6 +59,17 @@ ios-runner ensure
 ios-runner configure --run
 ```
 
+### Demo smoke test
+
+仓库内置 `CocoaPodsDemo` 可用于发版前快速检查本地 CLI、CocoaPods 工程识别、配置写入和 destination 列表：
+
+```bash
+./scripts/smoke-test-demo.sh
+
+# 如需包含 xcodebuild 编译
+IOS_RUNNER_SMOKE_BUILD=1 ./scripts/smoke-test-demo.sh
+```
+
 ### Zed Dev Extension
 
 ```bash

@@ -2,20 +2,24 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use ios_runner_core::{
-    RunnerConfig, build_project, configure_project, detect_project, embedded_keymap_entry,
-    ensure_project, global_tasks_json_pretty, global_zed_tasks_contain_legacy_scripts,
-    init_locale, install_global_zed_keymap, install_global_zed_tasks, is_placeholder_destination,
-    list_run_destinations, list_schemes, list_simulators, resolve_packages, run_app, t, tf,
-    switch_destination, uninstall_ios_runner, zed_config_dir, UninstallOptions,
+    build_project, configure_project, detect_project, embedded_keymap_entry, ensure_project,
+    global_tasks_json_pretty, global_zed_tasks_contain_legacy_scripts, init_locale,
+    install_global_zed_keymap, install_global_zed_tasks, is_placeholder_destination,
+    list_run_destinations, list_schemes, list_simulators, repair_saved_destination,
+    resolve_packages, run_app, switch_destination, t, tf, uninstall_ios_runner, zed_config_dir,
+    RunnerConfig, UninstallOptions,
 };
 
 mod mcp;
 
 #[derive(Parser)]
-#[command(name = "ios-runner", about = "Build and run iOS Xcode projects in Zed (iOS-Runner)")]
+#[command(
+    name = "ios-runner",
+    about = "Build and run iOS Xcode projects in Zed (iOS-Runner)"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -106,7 +110,8 @@ fn main() -> Result<()> {
         Commands::EmitEmbeddedKeymapJson => {
             print!(
                 "{}",
-                serde_json::to_string_pretty(&embedded_keymap_entry()).context("serialize keymap")?
+                serde_json::to_string_pretty(&embedded_keymap_entry())
+                    .context("serialize keymap")?
             );
             Ok(())
         }
@@ -138,7 +143,18 @@ fn workspace_root() -> Result<PathBuf> {
 }
 
 fn load_config(root: &Path) -> Result<RunnerConfig> {
-    let config = RunnerConfig::load(root)?;
+    let project = detect_project(root)?;
+    let mut config = RunnerConfig::load(root)?;
+    if repair_saved_destination(root, &project, &mut config)? {
+        config.save(root)?;
+        eprintln!(
+            "{}",
+            t(
+                "已自动更新失效的运行目标（destination）。",
+                "Updated stale run destination automatically.",
+            )
+        );
+    }
     config.apply_locale();
     config.validate(root)?;
     Ok(config)
@@ -178,7 +194,8 @@ fn warn_legacy_project_tasks() -> Result<()> {
     if !path.is_file() {
         return Ok(());
     }
-    let text = std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+    let text =
+        std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
     if text.contains("正在下载命令行工具")
         || text.contains("curl -fsSL")
         || text.contains("$ir_bin")
@@ -187,14 +204,18 @@ fn warn_legacy_project_tasks() -> Result<()> {
         eprintln!(
             "{}",
             tf(
-                || format!(
+                || {
+                    format!(
                     "⚠ 工程内 {} 仍是旧版下载脚本，会覆盖全局任务体验。可删除该文件或设置 IOS_RUNNER_WRITE_PROJECT_TASKS=1 后执行 ios-runner ensure 重写。",
                     path.display()
-                ),
-                || format!(
+                )
+                },
+                || {
+                    format!(
                     "⚠ Project {} still uses legacy download scripts. Delete it or run `ios-runner ensure` with IOS_RUNNER_WRITE_PROJECT_TASKS=1.",
                     path.display()
-                ),
+                )
+                },
             )
         );
     }
@@ -209,10 +230,7 @@ fn cmd_uninstall(keep_config: bool, purge_derived_data: bool) -> Result<()> {
 
     eprintln!("{}", t("已卸载 iOS-Runner：", "Uninstalled iOS-Runner:"));
     if report.removed.is_empty() {
-        eprintln!(
-            "{}",
-            t("  （未发现已安装的文件）", "  (nothing to remove)")
-        );
+        eprintln!("{}", t("  （未发现已安装的文件）", "  (nothing to remove)"));
     } else {
         for path in &report.removed {
             eprintln!("  - {path}");
@@ -254,8 +272,10 @@ fn cmd_install_self() -> Result<()> {
 
 fn cmd_doctor(root: &Path) -> Result<()> {
     let mut ok = true;
+    let mut next_steps: Vec<String> = Vec::new();
 
     eprintln!("iOS-Runner {}", env!("CARGO_PKG_VERSION"));
+    eprintln!("{}", t("检查清单：", "Checklist:"));
 
     let home = dirs::home_dir().context("home directory")?;
     let bundled_cli = home.join(".ios-runner/bin/ios-runner");
@@ -264,11 +284,27 @@ fn cmd_doctor(root: &Path) -> Result<()> {
     } else if let Ok(exe) = env::current_exe() {
         eprintln!("✓ CLI (current) {}", exe.display());
     } else {
-        eprintln!("⚠ CLI not at ~/.ios-runner/bin/ios-runner — reload Zed extension or run install-self");
+        eprintln!(
+            "⚠ CLI not at ~/.ios-runner/bin/ios-runner — reload Zed extension or run install-self"
+        );
+        next_steps.push(
+            t(
+                "重启 Zed，或运行 ios-runner install-self 安装 CLI",
+                "Restart Zed, or run ios-runner install-self to install the CLI",
+            )
+            .to_string(),
+        );
     }
 
     if global_zed_tasks_contain_legacy_scripts().unwrap_or(false) {
         eprintln!("⚠ Global Zed tasks use legacy scripts — run: ios-runner install-zed-tasks");
+        next_steps.push(
+            t(
+                "运行 ios-runner install-zed-tasks 刷新 Zed 全局任务",
+                "Run ios-runner install-zed-tasks to refresh global Zed tasks",
+            )
+            .to_string(),
+        );
     } else if zed_config_dir()
         .map(|d| d.join("tasks.json").is_file())
         .unwrap_or(false)
@@ -276,6 +312,13 @@ fn cmd_doctor(root: &Path) -> Result<()> {
         eprintln!("✓ Global Zed tasks");
     } else {
         eprintln!("⚠ No global tasks — run: ios-runner install-zed-tasks");
+        next_steps.push(
+            t(
+                "运行 ios-runner install-zed-tasks，或在 Zed 中重载扩展",
+                "Run ios-runner install-zed-tasks, or reload the extension in Zed",
+            )
+            .to_string(),
+        );
     }
 
     for (name, args) in [
@@ -295,6 +338,13 @@ fn cmd_doctor(root: &Path) -> Result<()> {
         eprintln!("✓ xcbeautify");
     } else {
         eprintln!("⚠ xcbeautify not found (optional, brew install xcbeautify)");
+        next_steps.push(
+            t(
+                "可选：brew install xcbeautify 让 xcodebuild 输出更易读",
+                "Optional: brew install xcbeautify for cleaner xcodebuild output",
+            )
+            .to_string(),
+        );
     }
 
     if root.join("Podfile").is_file() {
@@ -302,21 +352,44 @@ fn cmd_doctor(root: &Path) -> Result<()> {
             eprintln!("✓ CocoaPods (pod)");
         } else {
             eprintln!("⚠ Podfile present but `pod` not found");
+            next_steps.push(
+                t(
+                    "安装 CocoaPods：brew install cocoapods 或 gem install cocoapods",
+                    "Install CocoaPods: brew install cocoapods or gem install cocoapods",
+                )
+                .to_string(),
+            );
         }
         if !root.join("Pods").is_dir() {
             eprintln!("⚠ Run `pod install` before building");
+            next_steps.push(
+                t(
+                    "先运行 Zed 任务「iOS-Runner: Pod Install」或命令 pod install",
+                    "Run the Zed task「iOS-Runner: Pod Install」or pod install first",
+                )
+                .to_string(),
+            );
         }
     }
 
-    match detect_project(root) {
+    let detected_project = match detect_project(root) {
         Ok(p) => {
             eprintln!("✓ Xcode {}: {}", p.kind_label(), p.path.display());
+            Some(p)
         }
         Err(e) => {
             eprintln!("✗ {e}");
             ok = false;
+            next_steps.push(
+                t(
+                    "打开包含 .xcworkspace 或 .xcodeproj 的目录",
+                    "Open the folder that contains your .xcworkspace or .xcodeproj",
+                )
+                .to_string(),
+            );
+            None
         }
-    }
+    };
 
     match RunnerConfig::load(root) {
         Ok(config) => {
@@ -329,28 +402,75 @@ fn cmd_doctor(root: &Path) -> Result<()> {
                     )
                 );
                 ok = false;
+                next_steps.push(t(
+                    "运行 ios-runner switch 或 Zed 任务「iOS-Runner: 选择 Scheme 与设备」",
+                    "Run ios-runner switch or the Zed task「iOS-Runner: Select Scheme & Device」",
+                ).to_string());
             } else {
                 eprintln!(
                     "✓ {}",
                     tf(
-                        || format!("已配置 scheme={} · {}", config.scheme, config.device_summary()),
-                        || format!("Configured scheme={} · {}", config.scheme, config.device_summary()),
+                        || format!(
+                            "已配置 scheme={} · {}",
+                            config.scheme,
+                            config.device_summary()
+                        ),
+                        || format!(
+                            "Configured scheme={} · {}",
+                            config.scheme,
+                            config.device_summary()
+                        ),
                     )
+                );
+                if detected_project.is_some() {
+                    next_steps.push(
+                        t(
+                            "运行 ios-runner build，或在 Zed 中按 Cmd+Shift+B",
+                            "Run ios-runner build, or press Cmd+Shift+B in Zed",
+                        )
+                        .to_string(),
+                    );
+                    next_steps.push(
+                        t(
+                            "运行 ios-runner run，或在 Zed 中按 Cmd+Shift+R",
+                            "Run ios-runner run, or press Cmd+Shift+R in Zed",
+                        )
+                        .to_string(),
+                    );
+                }
+            }
+        }
+        Err(_) => {
+            eprintln!(
+                "ℹ {}",
+                t(
+                    "此工程尚无配置 — 运行 ios-runner ensure",
+                    "No config for this project — run ios-runner ensure",
+                )
+            );
+            if detected_project.is_some() {
+                next_steps.push(
+                    t(
+                        "运行 ios-runner ensure 初始化配置",
+                        "Run ios-runner ensure to initialize configuration",
+                    )
+                    .to_string(),
                 );
             }
         }
-        Err(_) => eprintln!(
-            "ℹ {}",
-            t(
-                "此工程尚无配置 — 运行 ios-runner ensure",
-                "No config for this project — run ios-runner ensure",
-            )
-        ),
     }
 
+    print_next_steps(&next_steps);
+
     if ok {
-        eprintln!("\nNext: ios-runner configure   (pick scheme & simulator)");
-        eprintln!("      ios-runner init --pick");
+        eprintln!();
+        eprintln!(
+            "{}",
+            t(
+                "✓ Doctor 未发现阻断问题",
+                "✓ Doctor found no blocking issues"
+            )
+        );
     } else {
         bail!("doctor found issues");
     }
@@ -403,7 +523,43 @@ fn cmd_init_ensure(root: &Path, quiet: bool) -> Result<()> {
         t("全局配置", "Global config"),
         report.global_config.display()
     );
+    let mut next_steps = Vec::new();
+    if report.has_podfile && !report.has_pods_dir {
+        next_steps.push(
+            t(
+                "先运行 Zed 任务「iOS-Runner: Pod Install」或命令 pod install",
+                "Run the Zed task「iOS-Runner: Pod Install」or pod install first",
+            )
+            .to_string(),
+        );
+    }
+    next_steps.push(
+        t(
+            "需要换设备时运行 ios-runner switch 或按 Cmd+Shift+I",
+            "Run ios-runner switch or press Cmd+Shift+I when you need another device",
+        )
+        .to_string(),
+    );
+    next_steps.push(
+        t(
+            "运行 ios-runner run，或在 Zed 中按 Cmd+Shift+R",
+            "Run ios-runner run, or press Cmd+Shift+R in Zed",
+        )
+        .to_string(),
+    );
+    print_next_steps(&next_steps);
     Ok(())
+}
+
+fn print_next_steps(steps: &[String]) {
+    if steps.is_empty() {
+        return;
+    }
+    eprintln!();
+    eprintln!("{}", t("下一步：", "Next steps:"));
+    for (idx, step) in steps.iter().enumerate() {
+        eprintln!("  {}. {step}", idx + 1);
+    }
 }
 
 fn cmd_configure(root: &Path, run: bool, no_run: bool) -> Result<()> {
@@ -420,11 +576,7 @@ fn cmd_configure(root: &Path, run: bool, no_run: bool) -> Result<()> {
 
 fn print_config_summary(config: &RunnerConfig, has_podfile: bool) {
     if let Ok(path) = ios_runner_core::config_file_path() {
-        eprintln!(
-            "  {}: {}",
-            t("全局配置", "Global config"),
-            path.display()
-        );
+        eprintln!("  {}: {}", t("全局配置", "Global config"), path.display());
     }
     eprintln!("  scheme: {}", config.scheme);
     eprintln!("  path:   {}", config.path);

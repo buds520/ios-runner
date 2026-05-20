@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 
 use crate::config::RunnerConfig;
-use crate::destination::{DestinationKind, default_destination_index, list_run_destinations};
+use crate::destination::{default_destination_index, list_run_destinations, DestinationKind};
 use crate::detect::{detect_project, filter_schemes_for_project, pick_default_scheme};
 use crate::global_store::load_global_file;
 use crate::locale::{t, tf};
@@ -108,10 +108,7 @@ pub fn configure_project(root: &Path, run_after: Option<bool>) -> Result<RunnerC
 
     let should_run = match run_after {
         Some(v) => v,
-        None => confirm(
-            t("是否立即编译并运行？", "Build and run now?"),
-            false,
-        )?,
+        None => confirm(t("是否立即编译并运行？", "Build and run now?"), false)?,
     };
 
     if should_run {
@@ -181,12 +178,18 @@ pub fn print_configure_success(config: &RunnerConfig, global_path: &std::path::P
     if config.destination.contains("Simulator") {
         eprintln!(
             "{}",
-            t("提示：模拟器无需签名", "Tip: no signing required for simulator")
+            t(
+                "提示：模拟器无需签名",
+                "Tip: no signing required for simulator"
+            )
         );
     } else if config.destination.contains("macOS") {
         eprintln!(
             "{}",
-            t("提示：Mac 应用将直接在本机启动", "Tip: Mac app launches locally")
+            t(
+                "提示：Mac 应用将直接在本机启动",
+                "Tip: Mac app launches locally"
+            )
         );
     } else {
         eprintln!(

@@ -51,12 +51,13 @@ pub fn print_project_context(config: &RunnerConfig) {
     } else {
         crate::locale::t("Xcode Project", "Xcode Project")
     };
-    section(
-        crate::locale::t("当前工程", "Current project"),
-        None,
-    );
+    section(crate::locale::t("当前工程", "Current project"), None);
     info(&format!("{} : {}", crate::locale::t("类型", "Kind"), kind));
-    info(&format!("{} : {}", crate::locale::t("路径", "Path"), config.path));
+    info(&format!(
+        "{} : {}",
+        crate::locale::t("路径", "Path"),
+        config.path
+    ));
     info(&format!(
         "{} : {}",
         crate::locale::t("包管理", "Package manager"),

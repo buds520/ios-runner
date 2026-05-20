@@ -58,22 +58,15 @@ pub fn platforms_support_ios(platforms: &[String]) -> bool {
 }
 
 pub fn platforms_macos_only(platforms: &[String]) -> bool {
-    !platforms.is_empty()
-        && platforms
-            .iter()
-            .all(|p| p == "macosx" || p == "macos")
+    !platforms.is_empty() && platforms.iter().all(|p| p == "macosx" || p == "macos")
 }
 
-pub fn scheme_is_macos_only(
-    root: &Path,
-    project: &DetectedProject,
-    scheme: &str,
-) -> Result<bool> {
+pub fn scheme_is_macos_only(root: &Path, project: &DetectedProject, scheme: &str) -> Result<bool> {
     let platforms = supported_platforms_for_scheme(root, project, scheme)?;
     if !platforms.is_empty() {
         return Ok(platforms_macos_only(&platforms));
     }
-    Ok(pbxproj_looks_macos_only(project)?)
+    pbxproj_looks_macos_only(project)
 }
 
 fn pbxproj_looks_macos_only(project: &DetectedProject) -> Result<bool> {
@@ -100,6 +93,7 @@ fn pbxproj_looks_macos_only(project: &DetectedProject) -> Result<bool> {
     let has_ios = text.contains("iphoneos")
         || text.contains("iphonesimulator")
         || text.contains("TARGETED_DEVICE_FAMILY");
-    let has_mac = text.contains("SDKROOT = macosx") || text.contains("SUPPORTED_PLATFORMS = macosx");
+    let has_mac =
+        text.contains("SDKROOT = macosx") || text.contains("SUPPORTED_PLATFORMS = macosx");
     Ok(has_mac && !has_ios)
 }

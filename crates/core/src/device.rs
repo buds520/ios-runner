@@ -1,7 +1,7 @@
 use std::fs;
 use std::process::Command;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 
 use crate::locale::t;
@@ -141,11 +141,15 @@ pub fn report_devicectl_failure(label: &str, stderr: &str, stdout: &str) -> Resu
 
 fn device_locked_hint(device_id: &str) {
     warn(&crate::locale::tf(
-        || format!(
+        || {
+            format!(
             "真机 ({device_id}) 需要先解锁：按电源键亮屏并输入密码，保持解锁后再运行 iOS-Runner: Run。"
-        ),
-        || format!(
+        )
+        },
+        || {
+            format!(
             "Device ({device_id}) must be unlocked first: wake the iPhone, enter passcode, then run iOS-Runner: Run."
-        ),
+        )
+        },
     ));
 }

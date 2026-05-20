@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde_json::json;
 
-use crate::bootstrap::{CLI_PATH_SHELL, lang_for_task_script, zed_task_preamble};
+use crate::bootstrap::{lang_for_task_script, zed_task_preamble, CLI_PATH_SHELL};
 use crate::detect::DetectedProject;
 use crate::locale::Lang;
 
@@ -26,6 +26,12 @@ pub struct TaskDef {
 
 /// Single source of truth for Zed task labels and CLI subcommands.
 pub const TASK_DEFS: &[TaskDef] = &[
+    TaskDef {
+        subcommand: "doctor",
+        target: TaskInstallTarget::Global,
+        label_zh: "检查环境",
+        label_en: "Doctor",
+    },
     TaskDef {
         subcommand: "ensure",
         target: TaskInstallTarget::Global,
@@ -96,7 +102,9 @@ pub fn tasks_json_has_ios_runner_tasks(text: &str) -> bool {
     if text.contains("curl -fsSL") || text.contains("$ir_bin") {
         return false;
     }
-    text.contains("iOS-Runner: Run")
+    text.contains("iOS-Runner: Doctor")
+        || text.contains("iOS-Runner: 检查环境")
+        || text.contains("iOS-Runner: Run")
         || text.contains("iOS-Runner: 运行")
         || text.contains("iOS-Runner: Initialize Project")
         || text.contains("iOS-Runner: 初始化项目")
@@ -128,6 +136,8 @@ pub fn should_refresh_project_tasks(path: &Path) -> bool {
 pub fn project_tasks_file_has_global_duplicates(text: &str) -> bool {
     text.contains("\"label\": \"iOS-Runner: 运行\"")
         || text.contains("\"label\": \"iOS-Runner: Run\"")
+        || text.contains("\"label\": \"iOS-Runner: 检查环境\"")
+        || text.contains("\"label\": \"iOS-Runner: Doctor\"")
         || text.contains("\"label\": \"iOS-Runner: 编译\"")
         || text.contains("\"label\": \"iOS-Runner: Build\"")
         || text.contains("\"label\": \"iOS-Runner: 初始化项目\"")
@@ -163,9 +173,7 @@ fn task_body(subcommand: &str) -> String {
     if subcommand == "ensure" {
         format!("{CLI_PATH_SHELL} ensure")
     } else {
-        format!(
-            "{CLI_PATH_SHELL} ensure --quiet && {CLI_PATH_SHELL} {subcommand}"
-        )
+        format!("{CLI_PATH_SHELL} ensure --quiet && {CLI_PATH_SHELL} {subcommand}")
     }
 }
 
@@ -212,7 +220,10 @@ mod tests {
 
     #[test]
     fn init_task_label_zh() {
-        let def = &TASK_DEFS[0];
+        let def = TASK_DEFS
+            .iter()
+            .find(|d| d.subcommand == "ensure" && d.target == TaskInstallTarget::Global)
+            .expect("ensure task");
         assert_eq!(
             task_label_for_def(def, Lang::ZhCn),
             "iOS-Runner: 初始化项目"
@@ -234,6 +245,17 @@ mod tests {
             .filter_map(|t| t.get("label").and_then(|l| l.as_str()))
             .collect();
         assert!(!labels.contains(&"iOS-Runner: 运行"));
+        assert!(!labels.contains(&"iOS-Runner: 检查环境"));
         assert!(labels.iter().any(|l| l.contains("详细日志")));
+    }
+
+    #[test]
+    fn global_tasks_include_doctor() {
+        let global = shell_tasks_for_target(TaskInstallTarget::Global, Lang::En);
+        let labels: Vec<_> = global
+            .iter()
+            .filter_map(|t| t.get("label").and_then(|l| l.as_str()))
+            .collect();
+        assert!(labels.contains(&"iOS-Runner: Doctor"));
     }
 }

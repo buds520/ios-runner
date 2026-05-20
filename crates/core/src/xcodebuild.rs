@@ -4,21 +4,21 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use walkdir::WalkDir;
 
 use crate::build_diagnostics::append_and_persist;
 use crate::build_settings::launch_artifacts;
 use crate::config::{ProjectKind, RunnerConfig};
-use crate::detect::DetectedProject;
 use crate::destination::{
-    DestinationKind, device_udid_from_destination, is_macos_destination,
-    is_simulator_destination, list_run_destinations,
+    device_udid_from_destination, is_macos_destination, is_simulator_destination,
+    list_run_destinations, DestinationKind,
 };
+use crate::detect::DetectedProject;
 use crate::device::{ensure_device_ready, report_devicectl_failure};
-use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
 use crate::locale::t;
+use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
 use crate::terminal_ui::{info, print_project_context, section, success, warn};
 
 pub fn list_schemes(root: &Path, project: &DetectedProject) -> Result<Vec<String>> {
@@ -162,7 +162,9 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
         success(t("✓ 编译成功", "✓ Build succeeded"));
     }
     if let Err(e) = &result {
-        if !is_simulator_destination(&config.destination) && !is_macos_destination(&config.destination) {
+        if !is_simulator_destination(&config.destination)
+            && !is_macos_destination(&config.destination)
+        {
             anyhow::bail!(
                 "{e}\n\n{}",
                 t(
@@ -188,10 +190,7 @@ fn build_for_run(root: &Path, config: &RunnerConfig) -> Result<()> {
             ));
             return Ok(());
         }
-        warn(t(
-            "未找到 .app，将重新编译",
-            ".app not found, rebuilding",
-        ));
+        warn(t("未找到 .app，将重新编译", ".app not found, rebuilding"));
         std::env::set_var("IOS_RUNNER_FORCE_BUILD", "1");
     }
     build_project(root, config)
@@ -231,8 +230,14 @@ pub fn detect_incremental_fresh(root: &Path, config: &RunnerConfig) -> Result<bo
 fn walk_skip_dir(name: &str) -> bool {
     matches!(
         name,
-        "Pods" | "DerivedData" | ".build" | ".git" | ".ios-runner" | "node_modules"
-            | ".bluecode" | "xcuserdata"
+        "Pods"
+            | "DerivedData"
+            | ".build"
+            | ".git"
+            | ".ios-runner"
+            | "node_modules"
+            | ".bluecode"
+            | "xcuserdata"
     )
 }
 
@@ -330,9 +335,7 @@ pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
         let _ = Command::new("open").args(["-a", "Simulator"]).status();
     }
 
-    let app = app_path
-        .to_str()
-        .context("app path is not valid UTF-8")?;
+    let app = app_path.to_str().context("app path is not valid UTF-8")?;
 
     let status = Command::new("xcrun")
         .args(["simctl", "install", &device_udid, app])
@@ -351,14 +354,17 @@ pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
     );
     info(&format!("{} {bundle_id}", t("启动", "Launch")));
     // exec replaces this process so Ctrl+C reaches simctl (works in Zed tasks too).
-    exec_inherited("xcrun", [
-        "simctl",
-        "launch",
-        "--console-pty",
-        "--terminate-running-process",
-        &device_udid,
-        &bundle_id,
-    ])
+    exec_inherited(
+        "xcrun",
+        [
+            "simctl",
+            "launch",
+            "--console-pty",
+            "--terminate-running-process",
+            &device_udid,
+            &bundle_id,
+        ],
+    )
 }
 
 pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
@@ -381,14 +387,7 @@ pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
         "{} {device_id}",
         t("设备安装", "Installing on device"),
     ));
-    let install = run_devicectl(&[
-        "device",
-        "install",
-        "app",
-        "--device",
-        &device_id,
-        app_path,
-    ])?;
+    let install = run_devicectl(&["device", "install", "app", "--device", &device_id, app_path])?;
     if !install.status.success() {
         let stderr = String::from_utf8_lossy(&install.stderr);
         let stdout = String::from_utf8_lossy(&install.stdout);
@@ -436,11 +435,7 @@ pub fn run_on_mac(root: &Path, config: &RunnerConfig) -> Result<()> {
         t("启动 Mac 应用", "Launch Mac app"),
         Some(&config.device_summary()),
     );
-    info(&format!(
-        "{} {}",
-        t("打开", "Open"),
-        app_path.display()
-    ));
+    info(&format!("{} {}", t("打开", "Open"), app_path.display()));
 
     let status = Command::new("open")
         .arg(&app_path)
@@ -485,7 +480,10 @@ fn resolve_packages_quiet(root: &Path, config: &RunnerConfig) -> Result<()> {
     if status.success() {
         Ok(())
     } else {
-        bail!("resolvePackageDependencies failed (exit {:?})", status.code())
+        bail!(
+            "resolvePackageDependencies failed (exit {:?})",
+            status.code()
+        )
     }
 }
 
@@ -509,7 +507,8 @@ fn boot_simulator(udid: &str) -> Result<()> {
         return Ok(());
     }
     let stderr = String::from_utf8_lossy(&output.stderr);
-    if stderr.contains("current state: Booted") || stderr.contains("Unable to boot device in current state: Booted")
+    if stderr.contains("current state: Booted")
+        || stderr.contains("Unable to boot device in current state: Booted")
     {
         return Ok(());
     }
@@ -520,7 +519,10 @@ fn boot_simulator(udid: &str) -> Result<()> {
 }
 
 /// Run a foreground tool with inherited stdio; on macOS use exec so Ctrl+C stops the child directly.
-fn exec_inherited(program: &str, args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> Result<()> {
+fn exec_inherited(
+    program: &str,
+    args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>,
+) -> Result<()> {
     let mut cmd = Command::new(program);
     cmd.args(args);
     cmd.stdin(Stdio::inherit())
@@ -670,4 +672,3 @@ struct ProjectList {
 struct WorkspaceList {
     schemes: Option<Vec<String>>,
 }
-

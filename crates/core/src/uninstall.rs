@@ -3,10 +3,10 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
+use crate::bootstrap::INSTALL_DIR;
 use crate::global_store::config_dir;
 use crate::global_tasks::uninstall_global_zed_tasks;
 use crate::zed_keymap::uninstall_global_zed_keymap;
-use crate::bootstrap::INSTALL_DIR;
 
 #[derive(Debug, Clone, Default)]
 pub struct UninstallOptions {
@@ -99,7 +99,9 @@ fn prune_empty_dir(path: &Path, report: &mut UninstallReport) {
     if !path.is_dir() {
         return;
     }
-    if fs::read_dir(path).map(|mut d| d.next().is_none()).unwrap_or(false)
+    if fs::read_dir(path)
+        .map(|mut d| d.next().is_none())
+        .unwrap_or(false)
         && fs::remove_dir(path).is_ok()
     {
         report.removed.push(path.display().to_string());

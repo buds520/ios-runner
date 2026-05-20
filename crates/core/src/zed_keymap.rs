@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::bootstrap::lang_for_task_script;
 use crate::tasks::global_keymap_task_label;
@@ -22,9 +22,7 @@ pub fn default_ios_runner_bindings() -> serde_json::Map<String, Value> {
     );
     bindings.insert(
         "cmd-shift-i".into(),
-        spawn(
-            &global_keymap_task_label("configure --no-run", lang).expect("configure task"),
-        ),
+        spawn(&global_keymap_task_label("configure --no-run", lang).expect("configure task")),
     );
     bindings.insert(
         "cmd-shift-u".into(),
@@ -125,7 +123,10 @@ pub fn install_global_zed_keymap() -> Result<PathBuf> {
     };
 
     let ours = default_ios_runner_bindings();
-    if let Some(workspace) = entries.iter_mut().find(|e| e.get("context") == Some(&json!("Workspace"))) {
+    if let Some(workspace) = entries
+        .iter_mut()
+        .find(|e| e.get("context") == Some(&json!("Workspace")))
+    {
         let bindings = workspace
             .as_object_mut()
             .and_then(|o| o.get_mut("bindings"))

@@ -51,7 +51,11 @@ pub fn default_destination_index(destinations: &[RunDestination]) -> usize {
     destinations
         .iter()
         .position(|d| d.kind == DestinationKind::Mac && d.name == "My Mac")
-        .or_else(|| destinations.iter().position(|d| d.kind == DestinationKind::Mac))
+        .or_else(|| {
+            destinations
+                .iter()
+                .position(|d| d.kind == DestinationKind::Mac)
+        })
         .or_else(|| {
             destinations
                 .iter()
@@ -98,11 +102,7 @@ pub fn list_run_destinations(
     }
 
     // Prefer simulators first, then devices; stable name order within kind.
-    out.sort_by(|a, b| {
-        a.kind
-            .cmp(&b.kind)
-            .then_with(|| a.name.cmp(&b.name))
-    });
+    out.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| a.name.cmp(&b.name)));
 
     if out.is_empty() {
         if scheme_is_macos_only(root, project, scheme)? {
@@ -158,11 +158,20 @@ fn parse_destination_line(line: &str) -> Option<RunDestination> {
             .or_else(|| part.strip_prefix("platform="))
         {
             platform = Some(v.trim().to_string());
-        } else if let Some(v) = part.strip_prefix("name:").or_else(|| part.strip_prefix("name=")) {
+        } else if let Some(v) = part
+            .strip_prefix("name:")
+            .or_else(|| part.strip_prefix("name="))
+        {
             name = Some(v.trim().to_string());
-        } else if let Some(v) = part.strip_prefix("id:").or_else(|| part.strip_prefix("id=")) {
+        } else if let Some(v) = part
+            .strip_prefix("id:")
+            .or_else(|| part.strip_prefix("id="))
+        {
             id = Some(v.trim().to_string());
-        } else if let Some(v) = part.strip_prefix("OS:").or_else(|| part.strip_prefix("OS=")) {
+        } else if let Some(v) = part
+            .strip_prefix("OS:")
+            .or_else(|| part.strip_prefix("OS="))
+        {
             os = Some(v.trim().to_string());
         }
     }
@@ -244,6 +253,18 @@ pub fn is_macos_destination(destination: &str) -> bool {
     destination.contains("platform=macOS") || destination.contains("platform:macOS")
 }
 
+fn destination_kind(destination: &str) -> Option<DestinationKind> {
+    if is_macos_destination(destination) {
+        Some(DestinationKind::Mac)
+    } else if is_simulator_destination(destination) {
+        Some(DestinationKind::Simulator)
+    } else if destination.contains("platform=iOS") || destination.contains("platform:iOS") {
+        Some(DestinationKind::Device)
+    } else {
+        None
+    }
+}
+
 /// Human-readable device/simulator name from either `key=value` or legacy `key:value` strings.
 pub fn destination_display_name(destination: &str) -> Option<String> {
     if is_macos_destination(destination) {
@@ -299,10 +320,7 @@ pub fn validate_xcodebuild_destination(destination: &str) -> Result<()> {
         bail_invalid_destination(destination, "empty")?;
     }
     if is_placeholder_destination(destination) {
-        bail_invalid_destination(
-            destination,
-            "placeholder (not a real simulator or device)",
-        )?;
+        bail_invalid_destination(destination, "placeholder (not a real simulator or device)")?;
     }
     if !destination.contains('=') {
         bail_invalid_destination(destination, "expected key=value pairs")?;
@@ -316,16 +334,55 @@ pub fn validate_xcodebuild_destination(destination: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn destination_is_available(destination: &str, available: &[RunDestination]) -> bool {
+    let normalized = normalize_xcodebuild_destination(destination)
+        .unwrap_or_else(|| destination.trim().to_string());
+    available.iter().any(|d| d.destination == normalized)
+}
+
+/// Pick the least surprising replacement for a saved destination that Xcode no longer reports.
+pub fn replacement_destination_for_unavailable(
+    current: &str,
+    available: &[RunDestination],
+) -> Option<RunDestination> {
+    if available.is_empty() || destination_is_available(current, available) {
+        return None;
+    }
+
+    let current_kind = destination_kind(current);
+    let current_name = destination_display_name(current);
+    if let Some(name) = current_name.as_deref() {
+        if let Some(kind) = current_kind {
+            if let Some(dest) = available
+                .iter()
+                .find(|d| d.kind == kind && d.name == name)
+                .cloned()
+            {
+                return Some(dest);
+            }
+        }
+        if let Some(dest) = available.iter().find(|d| d.name == name).cloned() {
+            return Some(dest);
+        }
+    }
+
+    available.get(default_destination_index(available)).cloned()
+}
+
 fn bail_invalid_destination(destination: &str, reason: &str) -> Result<()> {
     anyhow::bail!(
         "{}",
         crate::locale::tf(
-            || format!(
+            || {
+                format!(
                 "运行目标（destination）无效：{reason}\n  当前值: {destination}\n  请执行: ios-runner switch\n  或在 Zed 中运行「iOS-Runner: 选择 Scheme 与设备」重新选择模拟器/真机。",
-            ),
-            || format!(
+            )
+            },
+            || {
+                format!(
                 "Invalid run destination: {reason}\n  Current: {destination}\n  Run: ios-runner switch\n  Or use the Zed task「iOS-Runner: Select Scheme & Device」.",
-            ),
+            )
+            },
         )
     )
 }
@@ -351,11 +408,7 @@ fn parse_destination_fields(destination: &str) -> Option<DestinationFields> {
     }
 
     if platform.is_some() || name.is_some() {
-        Some(DestinationFields {
-            platform,
-            name,
-            id,
-        })
+        Some(DestinationFields { platform, name, id })
     } else {
         None
     }
@@ -401,16 +454,12 @@ mod tests {
 
     #[test]
     fn parse_skips_any_mac() {
-        assert!(
-            parse_destination_line("{ platform:macOS, name:Any Mac }").is_none()
-        );
+        assert!(parse_destination_line("{ platform:macOS, name:Any Mac }").is_none());
     }
 
     #[test]
     fn parse_skips_placeholder() {
-        assert!(
-            parse_destination_line("{platform=iOS Simulator,name=placeholder}").is_none()
-        );
+        assert!(parse_destination_line("{platform=iOS Simulator,name=placeholder}").is_none());
     }
 
     #[test]
@@ -420,10 +469,8 @@ mod tests {
 
     #[test]
     fn normalize_colon_legacy_format() {
-        let fixed = normalize_xcodebuild_destination(
-            "platform:iOS Simulator,name:iPhone 16",
-        )
-        .unwrap();
+        let fixed =
+            normalize_xcodebuild_destination("platform:iOS Simulator,name:iPhone 16").unwrap();
         assert_eq!(fixed, "platform=iOS Simulator,name=iPhone 16");
     }
 
@@ -432,5 +479,36 @@ mod tests {
         assert!(is_placeholder_destination(
             "platform=iOS Simulator,name=Any iOS Simulator Device"
         ));
+    }
+
+    #[test]
+    fn replacement_keeps_same_device_name() {
+        let available = vec![RunDestination {
+            kind: DestinationKind::Device,
+            name: "Alice's iPhone".into(),
+            platform: "iOS".into(),
+            destination: "platform=iOS,id=new-device-id,name=Alice's iPhone".into(),
+        }];
+        let replacement = replacement_destination_for_unavailable(
+            "platform:iOS,id:old-device-id,name:Alice's iPhone",
+            &available,
+        )
+        .unwrap();
+        assert_eq!(replacement.destination, available[0].destination);
+    }
+
+    #[test]
+    fn replacement_returns_none_when_current_available() {
+        let available = vec![RunDestination {
+            kind: DestinationKind::Simulator,
+            name: "iPhone 16".into(),
+            platform: "iOS Simulator".into(),
+            destination: "platform=iOS Simulator,name=iPhone 16".into(),
+        }];
+        assert!(replacement_destination_for_unavailable(
+            "platform=iOS Simulator,name=iPhone 16",
+            &available,
+        )
+        .is_none());
     }
 }

@@ -1,6 +1,6 @@
 use std::io::{self, IsTerminal, Write};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 
 use crate::locale::t;
 
@@ -51,9 +51,7 @@ pub fn pick_one_with_default(title: &str, options: &[String], default_idx: usize
     io::stderr().flush().ok();
 
     let mut line = String::new();
-    io::stdin()
-        .read_line(&mut line)
-        .context("read selection")?;
+    io::stdin().read_line(&mut line).context("read selection")?;
     let trimmed = line.trim();
     if trimmed.is_empty() {
         return Ok(default_idx);

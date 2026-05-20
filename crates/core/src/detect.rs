@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use walkdir::WalkDir;
 
 use crate::config::{ProjectKind, RunnerConfig};
@@ -29,9 +29,7 @@ pub fn detect_project(root: &Path) -> Result<DetectedProject> {
                 has_package_swift,
             });
         }
-        bail!(
-            "Podfile found but no .xcworkspace. Run `pod install` to generate the workspace."
-        );
+        bail!("Podfile found but no .xcworkspace. Run `pod install` to generate the workspace.");
     }
 
     if let Some(ws) = find_workspace(root, false)? {
@@ -121,7 +119,11 @@ pub fn pick_default_scheme(schemes: &[String], project: &DetectedProject) -> Opt
     filtered
         .into_iter()
         .find(|s| !s.ends_with("Tests") && !s.ends_with("UITests"))
-        .or_else(|| filter_schemes_for_project(schemes, project).into_iter().next())
+        .or_else(|| {
+            filter_schemes_for_project(schemes, project)
+                .into_iter()
+                .next()
+        })
 }
 
 pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerConfig> {
@@ -138,9 +140,7 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerCon
         .to_string_lossy()
         .to_string();
 
-    let defaults = load_global_file()
-        .map(|f| f.defaults)
-        .unwrap_or_default();
+    let defaults = load_global_file().map(|f| f.defaults).unwrap_or_default();
 
     Ok(RunnerConfig {
         kind: project.kind,
@@ -189,10 +189,8 @@ mod tests {
     use std::fs;
 
     fn temp_detect_root(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "ios-runner-detect-{name}-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("ios-runner-detect-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -271,14 +269,20 @@ mod tests {
     fn platforms_macos_only_detects_mac_app() {
         use crate::platform::platforms_macos_only;
         assert!(platforms_macos_only(&["macosx".into()]));
-        assert!(!platforms_macos_only(&["iphoneos".into(), "iphonesimulator".into()]));
+        assert!(!platforms_macos_only(&[
+            "iphoneos".into(),
+            "iphonesimulator".into()
+        ]));
         assert!(!platforms_macos_only(&["macosx".into(), "iphoneos".into()]));
     }
 
     #[test]
     fn platforms_support_ios_detection() {
         use crate::platform::platforms_support_ios;
-        assert!(platforms_support_ios(&["iphoneos".into(), "iphonesimulator".into()]));
+        assert!(platforms_support_ios(&[
+            "iphoneos".into(),
+            "iphonesimulator".into()
+        ]));
         assert!(!platforms_support_ios(&["macosx".into()]));
     }
 }

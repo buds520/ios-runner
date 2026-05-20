@@ -8,6 +8,7 @@ extension.wasm
 xcuserdata/
 .idea/
 .vscode/
+.learnings/
 
 # Xcode / iOS-Runner build outputs
 **/.ios-runner/DerivedData/

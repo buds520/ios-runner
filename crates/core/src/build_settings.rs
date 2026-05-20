@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 
 use crate::config::RunnerConfig;
@@ -76,10 +76,7 @@ pub fn launch_artifacts(root: &Path, config: &RunnerConfig) -> Result<LaunchArti
 
     let app_path = PathBuf::from(target_build_dir).join(app_name);
     if !app_path.exists() {
-        bail!(
-            "app not found at {} (build first?)",
-            app_path.display()
-        );
+        bail!("app not found at {} (build first?)", app_path.display());
     }
 
     let bundle_identifier = settings

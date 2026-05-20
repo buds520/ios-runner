@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 
 use crate::destination::list_run_destinations;
 use crate::detect::detect_project;
@@ -15,13 +15,7 @@ pub fn switch_destination(root: &Path, list_only: bool) -> Result<()> {
 
     let destinations = list_run_destinations(root, &project, &config.scheme)?;
     if destinations.is_empty() {
-        bail!(
-            "{}",
-            t(
-                "未找到运行目标",
-                "No run destination found",
-            )
-        );
+        bail!("{}", t("未找到运行目标", "No run destination found",));
     }
 
     if list_only {
@@ -60,11 +54,12 @@ pub fn switch_destination(root: &Path, list_only: bool) -> Result<()> {
     updated.apply_locale();
 
     eprintln!();
-    eprintln!(
-        "{}",
-        t("✓ 运行目标已更新", "✓ Destination updated"),
-    );
+    eprintln!("{}", t("✓ 运行目标已更新", "✓ Destination updated"),);
     eprintln!("  {} : {}", t("配置", "Config"), path.display());
-    eprintln!("  {} : {}", t("目标", "Destination"), updated.device_summary());
+    eprintln!(
+        "  {} : {}",
+        t("目标", "Destination"),
+        updated.device_summary()
+    );
     Ok(())
 }

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.3.10] - 2026-05-21
+
+### Added
+- Zed global task: `iOS-Runner: Doctor` / `iOS-Runner: 检查环境`
+- Demo smoke-test script for `CocoaPodsDemo`
+- CI checks for Rust formatting and embedded extension JSON sync
+
+### Fixed
+- Automatically repair stale run destinations when saved devices disappear or IDs change
+- `doctor` and `ensure` now provide clearer next-step guidance, especially for CocoaPods projects
+
 ## [0.3.9] - 2026-05-20
 
 ### Added

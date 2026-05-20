@@ -3,7 +3,10 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::config::RunnerConfig;
-use crate::destination::{DestinationKind, default_destination_index, list_run_destinations, validate_xcodebuild_destination};
+use crate::destination::{
+    default_destination_index, is_simulator_destination, list_run_destinations,
+    replacement_destination_for_unavailable, validate_xcodebuild_destination, DestinationKind,
+};
 use crate::detect::{
     create_config, default_preferred_destination, detect_project, filter_schemes_for_project,
     pick_default_scheme,
@@ -58,12 +61,9 @@ pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
     }
 
     let mut config = load_config_for_project(root, &project)?;
-    if validate_xcodebuild_destination(&config.destination).is_err() {
-        if let Ok(dest) = default_preferred_destination(root, &project, &config.scheme) {
-            config.destination = dest;
-            save_config_for_project(root, &project, &config)?;
-            wrote_config = true;
-        }
+    if repair_saved_destination(root, &project, &mut config)? {
+        save_config_for_project(root, &project, &config)?;
+        wrote_config = true;
     }
 
     if wrote_config && is_interactive_tty() {
@@ -77,6 +77,7 @@ pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
         wrote_config,
         wrote_tasks,
         has_podfile: project.has_podfile,
+        has_pods_dir: root.join("Pods").is_dir(),
         global_config: config_file_path()?,
     })
 }
@@ -89,7 +90,10 @@ fn project_tasks_root(root: &Path, project: &crate::detect::DetectedProject) -> 
         .unwrap_or_else(|| root.to_path_buf())
 }
 
-fn interactive_configure(root: &Path, project: &crate::detect::DetectedProject) -> Result<RunnerConfig> {
+fn interactive_configure(
+    root: &Path,
+    project: &crate::detect::DetectedProject,
+) -> Result<RunnerConfig> {
     section(
         t("首次配置 iOS-Runner", "First-time iOS-Runner setup"),
         Some(&project.path.display().to_string()),
@@ -141,9 +145,7 @@ fn interactive_configure(root: &Path, project: &crate::detect::DetectedProject) 
         .to_string_lossy()
         .to_string();
 
-    let defaults = load_global_file()
-        .map(|f| f.defaults)
-        .unwrap_or_default();
+    let defaults = load_global_file().map(|f| f.defaults).unwrap_or_default();
 
     let language = std::env::var("IOS_RUNNER_LANG").unwrap_or(defaults.language);
 
@@ -162,6 +164,29 @@ fn interactive_configure(root: &Path, project: &crate::detect::DetectedProject) 
         development_team: None,
         language,
     })
+}
+
+pub fn repair_saved_destination(
+    root: &Path,
+    project: &crate::detect::DetectedProject,
+    config: &mut RunnerConfig,
+) -> Result<bool> {
+    if validate_xcodebuild_destination(&config.destination).is_err() {
+        config.destination = default_preferred_destination(root, project, &config.scheme)?;
+        config.bring_simulator_to_foreground = is_simulator_destination(&config.destination);
+        return Ok(true);
+    }
+
+    let destinations = list_run_destinations(root, project, &config.scheme)?;
+    if let Some(replacement) =
+        replacement_destination_for_unavailable(&config.destination, &destinations)
+    {
+        config.destination = replacement.destination;
+        config.bring_simulator_to_foreground = replacement.kind == DestinationKind::Simulator;
+        return Ok(true);
+    }
+
+    Ok(false)
 }
 
 fn print_ensure_summary(config: &RunnerConfig) {
@@ -184,5 +209,6 @@ pub struct EnsureReport {
     pub wrote_config: bool,
     pub wrote_tasks: bool,
     pub has_podfile: bool,
+    pub has_pods_dir: bool,
     pub global_config: std::path::PathBuf,
 }
