@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::detect::DetectedProject;
 use crate::locale::t;
+use crate::simulator::{destination_for_simulator, list_simulators};
 use crate::xcodebuild::add_project_args;
 
 /// A build/run target from `xcodebuild -showdestinations`.
@@ -82,7 +83,25 @@ pub fn list_run_destinations(
             .then_with(|| a.name.cmp(&b.name))
     });
 
+    if out.is_empty() {
+        out = destinations_from_simctl()?;
+    }
+
     Ok(out)
+}
+
+/// When `xcodebuild -showdestinations` only returns placeholders (common before first Xcode open).
+fn destinations_from_simctl() -> Result<Vec<RunDestination>> {
+    let sims = list_simulators()?;
+    Ok(sims
+        .into_iter()
+        .map(|sim| RunDestination {
+            kind: DestinationKind::Simulator,
+            name: sim.name.clone(),
+            platform: "iOS Simulator".to_string(),
+            destination: destination_for_simulator(&sim),
+        })
+        .collect())
 }
 
 fn parse_destination_line(line: &str) -> Option<RunDestination> {

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-05-20
+
+### Fixed
+- Empty destination list when `xcodebuild -showdestinations` returns only placeholders — fall back to `simctl` simulators
+- `ensure` shows a clear error instead of「没有可选项」when no simulator/device exists
+
 ## [0.3.6] - 2026-05-20
 
 ### Fixed

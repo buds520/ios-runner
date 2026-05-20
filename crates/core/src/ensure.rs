@@ -111,6 +111,15 @@ fn interactive_configure(root: &Path, project: &crate::detect::DetectedProject) 
     let scheme = scheme_options[scheme_idx].clone();
 
     let destinations = list_run_destinations(root, project, &scheme)?;
+    if destinations.is_empty() {
+        anyhow::bail!(
+            "{}",
+            t(
+                "未找到模拟器或真机。请在 Xcode → Settings → Platforms 安装 iOS 模拟器，或连接真机并在 Xcode 中完成信任与签名。",
+                "No simulator or device found. Install an iOS simulator (Xcode → Settings → Platforms) or connect a device and set up signing in Xcode.",
+            )
+        );
+    }
     let dest_labels: Vec<String> = destinations.iter().map(|d| d.menu_label()).collect();
     let default_dest_idx = destinations
         .iter()
