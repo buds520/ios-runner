@@ -2,10 +2,27 @@
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-05-20
+
+### Added
+- macOS app support: `My Mac` destination, `macosx` SDK build, launch via `open`
+- `platform.rs` for scheme platform detection
+
+### Fixed
+- Skip invalid macOS placeholder `Any Mac`; prefer `My Mac` / `platform=macOS,arch=arm64`
+- macOS destination display name when destination has no `name=`
+
+### Changed
+- **Cmd+Shift+I** runs `configure --no-run` (save scheme/device only; use **Cmd+Shift+R** to run)
+- Compact configure output: `✓ 已保存 · Scheme · 目标 · 按 Cmd+Shift+R 运行`
+- Zed tasks use non-login `zsh -f` shell to reduce env-var noise in the panel
+- README: iOS + macOS projects; FAQ for Zed env dump and macOS apps
+- Removed `assert_ios_project` (macOS projects no longer rejected)
+
 ## [0.3.8] - 2026-05-20
 
 ### Added
-- Detect macOS-only Xcode projects and skip with a clear message (`assert_ios_project`)
+- Detect macOS-only Xcode projects and skip with a clear message (superseded in next release by macOS run support)
 
 ## [0.3.7] - 2026-05-20
 

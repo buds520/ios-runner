@@ -39,7 +39,7 @@ pub const TASK_DEFS: &[TaskDef] = &[
         label_en: "Run",
     },
     TaskDef {
-        subcommand: "configure --run",
+        subcommand: "configure --no-run",
         target: TaskInstallTarget::Global,
         label_zh: "选择 Scheme 与设备",
         label_en: "Select Scheme & Device",
@@ -143,6 +143,16 @@ fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::
     map.insert("hide".into(), json!("never"));
     map.insert("save".into(), json!("all"));
     map.insert("use_new_terminal".into(), json!(false));
+    // 非 login shell，减少 Zed 拉取工程环境时在面板里刷一整屏 KEY=value
+    map.insert(
+        "shell".into(),
+        json!({
+            "with_arguments": {
+                "program": "/bin/zsh",
+                "args": ["-f"]
+            }
+        }),
+    );
     // Zed 默认会打印「Task finished / Command: /bin/zsh -i -c …」，容易像报错
     map.insert("show_command".into(), json!(false));
     map.insert("show_summary".into(), json!(false));

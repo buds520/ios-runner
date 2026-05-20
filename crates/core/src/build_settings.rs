@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
 use crate::config::RunnerConfig;
-use crate::destination::is_simulator_destination;
+use crate::destination::{is_macos_destination, is_simulator_destination};
 
 /// Launch-related paths from `xcodebuild -showBuildSettings -json`.
 /// Aligned with SweetPad's `XcodeBuildSettings` in `common/cli/scripts.ts`.
@@ -17,7 +17,9 @@ pub struct LaunchArtifacts {
 
 pub fn launch_artifacts(root: &Path, config: &RunnerConfig) -> Result<LaunchArtifacts> {
     let derived = config.derived_data_path(root);
-    let sdk = if is_simulator_destination(&config.destination) {
+    let sdk = if is_macos_destination(&config.destination) {
+        "macosx"
+    } else if is_simulator_destination(&config.destination) {
         "iphonesimulator"
     } else {
         "iphoneos"

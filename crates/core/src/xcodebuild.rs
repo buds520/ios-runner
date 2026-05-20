@@ -13,8 +13,8 @@ use crate::build_settings::launch_artifacts;
 use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
 use crate::destination::{
-    DestinationKind, device_udid_from_destination, is_simulator_destination,
-    list_run_destinations,
+    DestinationKind, device_udid_from_destination, is_macos_destination,
+    is_simulator_destination, list_run_destinations,
 };
 use crate::device::{ensure_device_ready, report_devicectl_failure};
 use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
@@ -162,7 +162,7 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
         success(t("✓ 编译成功", "✓ Build succeeded"));
     }
     if let Err(e) = &result {
-        if !is_simulator_destination(&config.destination) {
+        if !is_simulator_destination(&config.destination) && !is_macos_destination(&config.destination) {
             anyhow::bail!(
                 "{e}\n\n{}",
                 t(
@@ -307,7 +307,9 @@ fn latest_xcactivitylog_mtime(derived: &Path) -> Result<Option<SystemTime>> {
 }
 
 pub fn run_app(root: &Path, config: &RunnerConfig) -> Result<()> {
-    if is_simulator_destination(&config.destination) {
+    if is_macos_destination(&config.destination) {
+        run_on_mac(root, config)
+    } else if is_simulator_destination(&config.destination) {
         run_on_simulator(root, config)
     } else {
         run_on_device(root, config)
@@ -421,6 +423,34 @@ pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
         warn_device_launch_hints();
         return Err(e);
     }
+    Ok(())
+}
+
+pub fn run_on_mac(root: &Path, config: &RunnerConfig) -> Result<()> {
+    build_for_run(root, config)?;
+
+    let artifacts = launch_artifacts(root, config)?;
+    let app_path = artifacts.app_path;
+
+    section(
+        t("启动 Mac 应用", "Launch Mac app"),
+        Some(&config.device_summary()),
+    );
+    info(&format!(
+        "{} {}",
+        t("打开", "Open"),
+        app_path.display()
+    ));
+
+    let status = Command::new("open")
+        .arg(&app_path)
+        .status()
+        .context("open app")?;
+    if !status.success() {
+        bail!("open failed (exit {:?})", status.code());
+    }
+
+    success(t("✓ 应用已启动", "✓ App launched"));
     Ok(())
 }
 

@@ -23,7 +23,7 @@ pub fn default_ios_runner_bindings() -> serde_json::Map<String, Value> {
     bindings.insert(
         "cmd-shift-i".into(),
         spawn(
-            &global_keymap_task_label("configure --run", lang).expect("configure task"),
+            &global_keymap_task_label("configure --no-run", lang).expect("configure task"),
         ),
     );
     bindings.insert(

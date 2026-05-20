@@ -311,9 +311,6 @@ fn cmd_doctor(root: &Path) -> Result<()> {
     match detect_project(root) {
         Ok(p) => {
             eprintln!("✓ Xcode {}: {}", p.kind_label(), p.path.display());
-            if let Err(e) = ios_runner_core::assert_ios_project(root, &p) {
-                eprintln!("ℹ {e}");
-            }
         }
         Err(e) => {
             eprintln!("✗ {e}");

@@ -10,7 +10,7 @@ struct IosRunnerExtension;
 
 const EXTENSION_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Bump when Zed task scripts change (forces `install-zed-tasks` even if extension version unchanged).
-const TASKS_SCHEMA: &str = "tasks-v16-in-panel-terminal";
+const TASKS_SCHEMA: &str = "tasks-v18-shell-no-login";
 const TASK_LABEL_PREFIX: &str = "iOS-Runner:";
 const EMBEDDED_GLOBAL_TASKS: &str = include_str!("embedded_global_tasks.json");
 const EMBEDDED_KEYMAP_ENTRY: &str = include_str!("embedded_keymap_entry.json");
@@ -177,6 +177,7 @@ fn global_tasks_need_refresh() -> bool {
         || text.contains("ios-runner install-self")
         || text.contains("尚未就绪")
         || text.contains("not ready yet")
+        || text.contains("configure --run")
     {
         return true;
     }

@@ -2,7 +2,7 @@
 
 **English** · **[简体中文](README.zh-CN.md)**
 
-Build and run **your own** iOS Xcode projects from [Zed](https://zed.dev/) (`xcodebuild` + Simulator / device).
+Build and run **your own** Xcode projects from [Zed](https://zed.dev/) (iOS / iPadOS / macOS — `xcodebuild` + Simulator / device / Mac).
 
 **Requirements:** macOS · Xcode · [Zed](https://zed.dev/)
 
@@ -18,7 +18,7 @@ Install extension → Open Folder (your app) → Cmd+Shift+R
 | -------- | ------ |
 | **Cmd+Shift+R** | Run |
 | **Cmd+Shift+B** | Build |
-| **Cmd+Shift+I** | Scheme / device |
+| **Cmd+Shift+I** | Scheme / device (save only, no run) |
 | **Cmd+Shift+U** | Set up project |
 
 CocoaPods: run `pod install`, then Open Folder at the **`.xcworkspace`** directory.
@@ -59,7 +59,7 @@ The script installs Rust if needed, builds the CLI, and writes Zed tasks.
 
 **Duplicate tasks** → Remove `<project>/.zed/tasks.json`, run `ios-runner ensure --quiet`.
 
-**macOS app** → iOS Runner supports iOS / iPadOS only; build Mac apps in Xcode.
+**macOS app** → Same shortcuts as iOS; after setup the destination shows “My Mac”, and Cmd+Shift+R builds and launches locally.
 
 **Uninstall** → `~/.ios-runner/bin/ios-runner uninstall`, then disable the extension in Zed. (Use the full path if `ios-runner` is not on PATH; re-run `./install-dev.sh` to add it.)
 

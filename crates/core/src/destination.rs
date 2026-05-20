@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::detect::DetectedProject;
 use crate::locale::t;
+use crate::platform::scheme_is_macos_only;
 use crate::simulator::{destination_for_simulator, list_simulators};
 use crate::xcodebuild::add_project_args;
 
@@ -23,6 +24,7 @@ pub struct RunDestination {
 pub enum DestinationKind {
     Simulator,
     Device,
+    Mac,
 }
 
 impl RunDestination {
@@ -30,6 +32,7 @@ impl RunDestination {
         let tag = match self.kind {
             DestinationKind::Simulator => t("模拟器", "Simulator"),
             DestinationKind::Device => t("真机", "Device"),
+            DestinationKind::Mac => t("Mac", "Mac"),
         };
         format!("[{tag}] {}", self.name)
     }
@@ -38,8 +41,23 @@ impl RunDestination {
         match self.kind {
             DestinationKind::Simulator => format!("{} · {}", t("模拟器", "Simulator"), self.name),
             DestinationKind::Device => format!("{} · {}", t("真机", "Device"), self.name),
+            DestinationKind::Mac => format!("{} · {}", t("Mac", "Mac"), self.name),
         }
     }
+}
+
+/// Prefer My Mac, then other Mac targets, then physical device, else first entry.
+pub fn default_destination_index(destinations: &[RunDestination]) -> usize {
+    destinations
+        .iter()
+        .position(|d| d.kind == DestinationKind::Mac && d.name == "My Mac")
+        .or_else(|| destinations.iter().position(|d| d.kind == DestinationKind::Mac))
+        .or_else(|| {
+            destinations
+                .iter()
+                .position(|d| d.kind == DestinationKind::Device)
+        })
+        .unwrap_or(0)
 }
 
 /// List simulators and connected physical iOS devices for a scheme.
@@ -70,7 +88,10 @@ pub fn list_run_destinations(
             continue;
         }
         if let Some(dest) = parse_destination_line(trimmed) {
-            if !dest.name.contains("placeholder") && dest.name != "Any iOS Device" {
+            if !dest.name.contains("placeholder")
+                && dest.name != "Any iOS Device"
+                && dest.name != "Any Mac"
+            {
                 out.push(dest);
             }
         }
@@ -84,7 +105,11 @@ pub fn list_run_destinations(
     });
 
     if out.is_empty() {
-        out = destinations_from_simctl()?;
+        if scheme_is_macos_only(root, project, scheme)? {
+            out = default_macos_destinations()?;
+        } else {
+            out = destinations_from_simctl()?;
+        }
     }
 
     Ok(out)
@@ -102,6 +127,15 @@ fn destinations_from_simctl() -> Result<Vec<RunDestination>> {
             destination: destination_for_simulator(&sim),
         })
         .collect())
+}
+
+fn default_macos_destinations() -> Result<Vec<RunDestination>> {
+    Ok(vec![RunDestination {
+        kind: DestinationKind::Mac,
+        name: t("My Mac", "My Mac").to_string(),
+        platform: "macOS".to_string(),
+        destination: "platform=macOS,name=My Mac".to_string(),
+    }])
 }
 
 fn parse_destination_line(line: &str) -> Option<RunDestination> {
@@ -136,12 +170,30 @@ fn parse_destination_line(line: &str) -> Option<RunDestination> {
     let platform = platform?;
     let name = name?;
 
-    if name.contains("placeholder") || name == "Any iOS Device" {
+    if name.contains("placeholder") || name == "Any iOS Device" || name == "Any Mac" {
         return None;
     }
 
     if platform == "macOS" {
-        return None;
+        let destination = if let Some(id) = id.filter(|i| !i.contains("placeholder")) {
+            if let Some(arch) = inner.split(',').find_map(|p| {
+                p.trim()
+                    .strip_prefix("arch:")
+                    .or_else(|| p.trim().strip_prefix("arch="))
+            }) {
+                format!("platform=macOS,arch={arch}")
+            } else {
+                format!("platform=macOS,id={id},name={name}")
+            }
+        } else {
+            format!("platform=macOS,name={name}")
+        };
+        return Some(RunDestination {
+            kind: DestinationKind::Mac,
+            name,
+            platform: "macOS".to_string(),
+            destination,
+        });
     }
 
     let kind = if platform.contains("Simulator") {
@@ -188,8 +240,19 @@ pub fn is_simulator_destination(destination: &str) -> bool {
     destination.contains("Simulator")
 }
 
+pub fn is_macos_destination(destination: &str) -> bool {
+    destination.contains("platform=macOS") || destination.contains("platform:macOS")
+}
+
 /// Human-readable device/simulator name from either `key=value` or legacy `key:value` strings.
 pub fn destination_display_name(destination: &str) -> Option<String> {
+    if is_macos_destination(destination) {
+        return Some(
+            parse_destination_fields(destination)
+                .and_then(|f| f.name)
+                .unwrap_or_else(|| "My Mac".to_string()),
+        );
+    }
     parse_destination_fields(destination).and_then(|f| f.name)
 }
 
@@ -200,9 +263,9 @@ pub fn is_placeholder_destination(destination: &str) -> bool {
             || destination.contains("Any iOS Simulator Device");
     };
     fields.id.is_some_and(|id| id.contains("placeholder"))
-        || fields
-            .name
-            .is_some_and(|n| n.contains("placeholder") || n == "Any iOS Simulator Device")
+        || fields.name.is_some_and(|n| {
+            n.contains("placeholder") || n == "Any iOS Simulator Device" || n == "Any Mac"
+        })
 }
 
 /// Convert stored destination to `xcodebuild -destination` form (`key=value` pairs).
@@ -223,6 +286,9 @@ pub fn normalize_xcodebuild_destination(destination: &str) -> Option<String> {
             return Some(format!("platform=iOS,id={id},name={name}"));
         }
         return Some(format!("platform=iOS,name={name}"));
+    }
+    if platform == "macOS" {
+        return Some(format!("platform=macOS,name={name}"));
     }
     None
 }
@@ -315,11 +381,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_macos_destination() {
+        let d = parse_destination_line(
+            "{ platform:macOS, arch:arm64, id:00006021-000270EC26F0C01E, name:My Mac }",
+        )
+        .unwrap();
+        assert_eq!(d.kind, DestinationKind::Mac);
+        assert_eq!(d.name, "My Mac");
+        assert!(d.destination.contains("macOS"));
+    }
+
+    #[test]
     fn parse_simulator_destination() {
         let d = parse_destination_line("{platform=iOS Simulator,name=iPhone 16,OS=18.2}").unwrap();
         assert_eq!(d.kind, DestinationKind::Simulator);
         assert_eq!(d.name, "iPhone 16");
         assert!(d.destination.contains("iPhone 16"));
+    }
+
+    #[test]
+    fn parse_skips_any_mac() {
+        assert!(
+            parse_destination_line("{ platform:macOS, name:Any Mac }").is_none()
+        );
     }
 
     #[test]

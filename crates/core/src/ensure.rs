@@ -3,9 +3,9 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::config::RunnerConfig;
-use crate::destination::{DestinationKind, list_run_destinations, validate_xcodebuild_destination};
+use crate::destination::{DestinationKind, default_destination_index, list_run_destinations, validate_xcodebuild_destination};
 use crate::detect::{
-    assert_ios_project, create_config, detect_project, filter_schemes_for_project,
+    create_config, default_preferred_destination, detect_project, filter_schemes_for_project,
     pick_default_scheme,
 };
 use crate::global_store::{
@@ -16,12 +16,11 @@ use crate::locale::t;
 use crate::prompt::{is_interactive_tty, pick_one_with_default};
 use crate::tasks::write_zed_tasks;
 use crate::terminal_ui::{print_project_context, section};
-use crate::xcodebuild::{default_simulator_destination, list_schemes};
+use crate::xcodebuild::list_schemes;
 
 /// Idempotent: detect Xcode project and save settings to global config.
 pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
     let project = detect_project(root)?;
-    assert_ios_project(root, &project)?;
     let keys = config_lookup_keys(root, &project);
     let mut wrote_config = false;
     let mut global_file = load_global_file()?;
@@ -60,7 +59,7 @@ pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
 
     let mut config = load_config_for_project(root, &project)?;
     if validate_xcodebuild_destination(&config.destination).is_err() {
-        if let Ok(dest) = default_simulator_destination(root, &project, &config.scheme) {
+        if let Ok(dest) = default_preferred_destination(root, &project, &config.scheme) {
             config.destination = dest;
             save_config_for_project(root, &project, &config)?;
             wrote_config = true;
@@ -117,21 +116,18 @@ fn interactive_configure(root: &Path, project: &crate::detect::DetectedProject) 
         anyhow::bail!(
             "{}",
             t(
-                "未找到模拟器或真机。请在 Xcode → Settings → Platforms 安装 iOS 模拟器，或连接真机并在 Xcode 中完成信任与签名。",
-                "No simulator or device found. Install an iOS simulator (Xcode → Settings → Platforms) or connect a device and set up signing in Xcode.",
+                "未找到运行目标。iOS 工程请在 Xcode → Settings → Platforms 安装模拟器或连接真机；macOS 工程需在本机安装 Xcode。",
+                "No run destination found. For iOS, install a simulator or connect a device; for macOS, ensure Xcode is installed.",
             )
         );
     }
     let dest_labels: Vec<String> = destinations.iter().map(|d| d.menu_label()).collect();
-    let default_dest_idx = destinations
-        .iter()
-        .position(|d| d.kind == DestinationKind::Device)
-        .unwrap_or(0);
+    let default_dest_idx = default_destination_index(&destinations);
 
     let dest_idx = pick_one_with_default(
         t(
-            "选择运行目标（模拟器 / 真机）",
-            "Select destination (simulator / device)",
+            "选择运行目标（模拟器 / 真机 / Mac）",
+            "Select destination (simulator / device / Mac)",
         ),
         &dest_labels,
         default_dest_idx,

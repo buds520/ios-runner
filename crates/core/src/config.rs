@@ -112,7 +112,9 @@ impl RunnerConfig {
         use crate::locale::t;
         let name = crate::destination::destination_display_name(&self.destination)
             .unwrap_or_else(|| "?".into());
-        if self.destination.contains("Simulator") || self.destination.contains("Simulator:") {
+        if self.destination.contains("macOS") {
+            format!("{} · {name}", t("Mac", "Mac"))
+        } else if self.destination.contains("Simulator") || self.destination.contains("Simulator:") {
             format!("{} · {name}", t("模拟器", "Simulator"),)
         } else {
             format!("{} · {name}", t("真机", "Device"))

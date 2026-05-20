@@ -2,7 +2,7 @@
 
 [**English**](README.md) · **简体中文**
 
-在 [Zed](https://zed.dev/) 里编译、运行 **你自己的 iOS 工程**（`xcodebuild` + 模拟器/真机）。
+在 [Zed](https://zed.dev/) 里编译、运行 **你自己的 Xcode 工程**（iOS / iPadOS / macOS，`xcodebuild` + 模拟器/真机/Mac）。
 
 **环境要求：** macOS · Xcode · [Zed](https://zed.dev/)
 
@@ -18,7 +18,7 @@
 |--------|------|
 | **Cmd+Shift+R** | 运行 |
 | **Cmd+Shift+B** | 编译 |
-| **Cmd+Shift+I** | 选 Scheme / 设备 |
+| **Cmd+Shift+I** | 选 Scheme / 设备（不运行） |
 | **Cmd+Shift+U** | 初始化工程 |
 
 CocoaPods：先 `pod install`，Open Folder 到 **`.xcworkspace` 所在目录**。
@@ -59,7 +59,9 @@ git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-run
 
 **重复任务** → 删工程内 `.zed/tasks.json`，执行 `ios-runner ensure --quiet`。
 
-**macOS 工程** → iOS Runner 仅支持 iOS / iPadOS，Mac 应用请在 Xcode 中编译。
+**macOS 应用** → 与 iOS 相同快捷键；初始化后目标会显示「My Mac」，Cmd+Shift+R 编译并在本机启动。
+
+**任务面板开头一堆 `HOME=…`、`ZED_*=…`** → 那是 **Zed 任务终端**在注入工程环境时打印的变量列表（`ZED_ENVIRONMENT=worktree-shell`），不是 iOS Runner。可忽略或向上滚动；更新 Zed / 重装任务（`ios-runner install-zed-tasks`）后可能减轻。若只有 Zed Preview 出现，可向 Zed 反馈。
 
 **卸载** → `~/.ios-runner/bin/ios-runner uninstall`，Zed Extensions 里禁用插件。（CLI 不在 PATH 时用完整路径；重装 `./install-dev.sh` 后会写入 PATH）
 
