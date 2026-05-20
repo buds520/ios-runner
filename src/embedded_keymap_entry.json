@@ -6,12 +6,6 @@
         "task_name": "iOS-Runner: 编译"
       }
     ],
-    "cmd-shift-e": [
-      "task::Spawn",
-      {
-        "task_name": "iOS-Runner: 初始化项目"
-      }
-    ],
     "cmd-shift-i": [
       "task::Spawn",
       {
@@ -22,6 +16,12 @@
       "task::Spawn",
       {
         "task_name": "iOS-Runner: 运行"
+      }
+    ],
+    "cmd-shift-u": [
+      "task::Spawn",
+      {
+        "task_name": "iOS-Runner: 初始化项目"
       }
     ]
   },

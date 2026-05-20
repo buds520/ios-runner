@@ -18,7 +18,7 @@ Install extension → Open Folder (your project) → Cmd+Shift+R to run
 | ---- | ---------- |
 | 1 | Install **extension + CLI** using one of the two methods below |
 | 2 | Zed: **File → Open Folder** → directory that contains `.xcodeproj` or `.xcworkspace` |
-| 3 | **Cmd+Shift+R** to run (first time: **Cmd+Shift+E** to set up) |
+| 3 | **Cmd+Shift+R** to run (first time: **Cmd+Shift+U** to set up) |
 
 CocoaPods: run `pod install` first, then Open Folder at the **`.xcworkspace`** directory.
 
@@ -66,28 +66,53 @@ Then in Zed:
 2. Select the cloned directory (contains `extension.toml`)
 3. **Cmd+Q** to quit Zed completely, then reopen
 4. **File → Open Folder** → your iOS project
-5. **Cmd+Shift+E** to set up, or **Cmd+Shift+R** to run
+5. **Cmd+Shift+U** to set up, or **Cmd+Shift+R** to run
 
 ---
 
 ## After install
 
+### First time on a project
+
+1. **File → Open Folder** → project root (contains `.xcodeproj` or `.xcworkspace`; not a single `.swift` file)
+2. **Cmd+Shift+U** — set up the project  
+   Pick **scheme** and **simulator or device** in the terminal; settings go to `~/.config/ios-runner/config.toml` (not your git repo)
+3. **Cmd+Shift+R** — build and run on the selected destination
+
+> You can skip step 2 and press **Cmd+Shift+R** directly; the first run auto-detects the project. Use **Cmd+Shift+I** to change scheme or device.
+
+### Day to day
+
 | Goal | Action |
 | ---- | ------ |
-| First time on this project | **Cmd+Shift+E** (interactive scheme & destination) |
 | Build and run | **Cmd+Shift+R** |
 | Build only | **Cmd+Shift+B** |
-| Change simulator / device | **Cmd+Shift+I**, or `ios-runner switch` in Terminal |
+| Change scheme / simulator / device | **Cmd+Shift+I** |
+| Re-run setup (detect project, refresh config) | **Cmd+Shift+U** |
 | All tasks | **Opt+Shift+T** → search `iOS-Runner` |
+| Switch device in Terminal | `ios-runner switch` |
 
-Settings live in **`~/.config/ios-runner/config.toml`**, keyed by `.xcodeproj` / `.xcworkspace` path — not committed to your repo by default.
+### Shortcuts
+
+| Shortcut | Action |
+| -------- | ------ |
+| **Cmd+Shift+R** | Run |
+| **Cmd+Shift+B** | Build |
+| **Cmd+Shift+I** | Select scheme & device |
+| **Cmd+Shift+U** | Set up project |
+
+> **Cmd+Shift+U** avoids conflicting with **Cmd+Shift+E** (often used for the sidebar). After upgrading, run `ios-runner install-zed-tasks` and **Cmd+Q** restart Zed if bindings did not update.
+
+### CocoaPods
+
+Run `pod install` first, then Open Folder at the **`.xcworkspace`** directory in Zed.
 
 ---
 
 ## FAQ
 
 **Task panel shows "No matches"**  
-→ Ensure **Open Folder** on the project directory (not a single file), then re-run `./install-dev.sh`.
+→ Ensure **Open Folder** on the project directory (not a single file), then re-run `./install-dev.sh` or `ios-runner install-zed-tasks`.
 
 **Duplicate Run tasks**  
 → Remove `<project>/.zed/tasks.json`, run `ios-runner ensure --quiet`.

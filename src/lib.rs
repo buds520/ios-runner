@@ -224,7 +224,7 @@ fn global_keymap_needs_refresh() -> bool {
     let Ok(text) = std::fs::read_to_string(&path) else {
         return true;
     };
-    !text.contains("iOS-Runner:")
+    !text.contains("iOS-Runner:") || text.contains("\"cmd-shift-e\"")
 }
 
 fn install_embedded_global_keymap() -> Result<(), String> {
@@ -260,7 +260,8 @@ fn install_embedded_global_keymap() -> Result<(), String> {
             .and_then(|b| b.as_object_mut())
             .ok_or_else(|| "invalid keymap workspace entry".to_string())?;
         for (k, v) in ours_bindings {
-            bindings.entry(k.clone()).or_insert(v.clone());
+            bindings.remove("cmd-shift-e");
+            bindings.insert(k.clone(), v.clone());
         }
     } else {
         entries.push(ours);

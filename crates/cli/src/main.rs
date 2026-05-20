@@ -172,8 +172,8 @@ fn cmd_install_zed_tasks() -> Result<()> {
     eprintln!(
         "{}",
         t(
-            "    Cmd+Shift+I  选设备 Cmd+Shift+E  初始化工程",
-            "    Cmd+Shift+I  Device   Cmd+Shift+E  Setup",
+            "    Cmd+Shift+I  选设备 Cmd+Shift+U  初始化工程",
+            "    Cmd+Shift+I  Device   Cmd+Shift+U  Setup",
         )
     );
     Ok(())

@@ -27,15 +27,29 @@ pub fn default_ios_runner_bindings() -> serde_json::Map<String, Value> {
         ),
     );
     bindings.insert(
-        "cmd-shift-e".into(),
+        "cmd-shift-u".into(),
         spawn(&global_keymap_task_label("ensure", lang).expect("ensure task")),
     );
     bindings
 }
 
+/// Superseded shortcuts removed on install so upgrades pick up new bindings.
+pub fn ios_runner_legacy_binding_keys() -> &'static [&'static str] {
+    &["cmd-shift-e"]
+}
+
 /// Keys written by `install_global_zed_keymap`.
 pub fn ios_runner_binding_keys() -> &'static [&'static str] {
-    &["cmd-shift-r", "cmd-shift-b", "cmd-shift-i", "cmd-shift-e"]
+    &["cmd-shift-r", "cmd-shift-b", "cmd-shift-i", "cmd-shift-u"]
+}
+
+fn apply_ios_runner_bindings(map: &mut serde_json::Map<String, Value>) {
+    for key in ios_runner_legacy_binding_keys() {
+        map.remove(*key);
+    }
+    for (k, v) in default_ios_runner_bindings() {
+        map.insert(k, v);
+    }
 }
 
 fn binding_targets_ios_runner(value: &Value) -> bool {
@@ -74,7 +88,8 @@ pub fn uninstall_global_zed_keymap() -> Result<Option<PathBuf>> {
         let keys: Vec<String> = bindings.keys().cloned().collect();
         for key in keys {
             let remove = bindings.get(&key).is_some_and(binding_targets_ios_runner)
-                || ios_runner_binding_keys().contains(&key.as_str());
+                || ios_runner_binding_keys().contains(&key.as_str())
+                || ios_runner_legacy_binding_keys().contains(&key.as_str());
             if remove {
                 bindings.remove(&key);
                 changed = true;
@@ -116,9 +131,7 @@ pub fn install_global_zed_keymap() -> Result<PathBuf> {
             .and_then(|o| o.get_mut("bindings"))
             .and_then(|b| b.as_object_mut());
         if let Some(map) = bindings {
-            for (k, v) in ours {
-                map.entry(k).or_insert(v);
-            }
+            apply_ios_runner_bindings(map);
         } else {
             workspace
                 .as_object_mut()

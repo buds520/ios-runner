@@ -78,7 +78,7 @@ ios-runner install-zed-tasks
 | **Cmd+Shift+R** | 运行 |
 | **Cmd+Shift+B** | 编译 |
 | **Cmd+Shift+I** | 选择 Scheme / 设备 |
-| **Cmd+Shift+E** | 初始化工程（ensure） |
+| **Cmd+Shift+U** | 初始化工程（ensure） |
 
 ### 2. Run 面板
 

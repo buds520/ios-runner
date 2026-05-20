@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-20
+
+### Changed
+- Init shortcut **Cmd+Shift+E** → **Cmd+Shift+U** (avoids Zed sidebar conflicts)
+- Upgrade path removes legacy `cmd-shift-e` binding on `install-zed-tasks`
+- README: expanded post-install usage guide and shortcut reference
+
 ## [0.3.1] - 2026-05-20
 
 ### Removed
