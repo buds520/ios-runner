@@ -58,7 +58,10 @@ enum Commands {
     /// Copy this executable to ~/.ios-runner/bin/ios-runner
     InstallSelf,
     /// Add iOS-Runner tasks to ~/.config/zed/tasks.json (all projects)
-    InstallZedTasks,
+    InstallZedTasks {
+        #[arg(short, long)]
+        quiet: bool,
+    },
     /// Print global Zed tasks JSON (for extension embed; stdout only)
     EmitGlobalTasksJson,
     /// Print global keymap entry JSON (for extension embed; stdout only)
@@ -95,7 +98,7 @@ fn main() -> Result<()> {
         Commands::Configure { run, no_run } => cmd_configure(&root, run, no_run),
         Commands::Mcp => mcp::run_mcp(),
         Commands::InstallSelf => cmd_install_self(),
-        Commands::InstallZedTasks => cmd_install_zed_tasks(),
+        Commands::InstallZedTasks { quiet } => cmd_install_zed_tasks(quiet),
         Commands::EmitGlobalTasksJson => {
             print!("{}", global_tasks_json_pretty()?);
             Ok(())
@@ -147,33 +150,23 @@ fn set_verbose_logs(verbose: bool) {
     }
 }
 
-fn cmd_install_zed_tasks() -> Result<()> {
+fn cmd_install_zed_tasks(quiet: bool) -> Result<()> {
     let tasks = install_global_zed_tasks()?;
     warn_legacy_project_tasks()?;
-    let keymap = install_global_zed_keymap()?;
+    let _keymap = install_global_zed_keymap()?;
+    if quiet {
+        return Ok(());
+    }
     eprintln!(
         "{} {}",
         t("✓ iOS-Runner 任务已写入", "✓ Wrote iOS-Runner tasks to"),
         tasks.display()
     );
     eprintln!(
-        "{} {}",
-        t("✓ 快捷键已写入", "✓ Wrote keybindings to"),
-        keymap.display()
-    );
-    eprintln!("{}", t("  重启 Zed 后可用：", "  Restart Zed, then use:"));
-    eprintln!(
         "{}",
         t(
-            "    Cmd+Shift+R  运行   Cmd+Shift+B  编译",
-            "    Cmd+Shift+R  Run   Cmd+Shift+B  Build",
-        )
-    );
-    eprintln!(
-        "{}",
-        t(
-            "    Cmd+Shift+I  选设备 Cmd+Shift+U  初始化工程",
-            "    Cmd+Shift+I  Device   Cmd+Shift+U  Setup",
+            "  快捷键: Cmd+Shift+R 运行  B 编译  I 选设备  U 初始化",
+            "  Keys: Cmd+Shift+R run  B build  I device  U setup",
         )
     );
     Ok(())

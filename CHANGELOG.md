@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-05-20
+
+### Fixed
+- Remove unused `pick_one` (clean `cargo build` output)
+
+### Changed
+- `install-dev.sh`: quieter output; `install-zed-tasks --quiet`
+- README: shorter install and usage sections
+
 ## [0.3.4] - 2026-05-20
 
 ### Fixed
