@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-05-20
+
+### Added
+- Detect macOS-only Xcode projects and skip with a clear message (`assert_ios_project`)
+
 ## [0.3.7] - 2026-05-20
 
 ### Fixed

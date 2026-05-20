@@ -5,7 +5,8 @@ use anyhow::Result;
 use crate::config::RunnerConfig;
 use crate::destination::{DestinationKind, list_run_destinations, validate_xcodebuild_destination};
 use crate::detect::{
-    create_config, detect_project, filter_schemes_for_project, pick_default_scheme,
+    assert_ios_project, create_config, detect_project, filter_schemes_for_project,
+    pick_default_scheme,
 };
 use crate::global_store::{
     config_file_path, config_lookup_keys, load_config_for_project, load_global_file,
@@ -20,6 +21,7 @@ use crate::xcodebuild::{default_simulator_destination, list_schemes};
 /// Idempotent: detect Xcode project and save settings to global config.
 pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
     let project = detect_project(root)?;
+    assert_ios_project(root, &project)?;
     let keys = config_lookup_keys(root, &project);
     let mut wrote_config = false;
     let mut global_file = load_global_file()?;

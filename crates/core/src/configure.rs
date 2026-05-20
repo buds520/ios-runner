@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 
 use crate::config::RunnerConfig;
 use crate::destination::{DestinationKind, list_run_destinations};
-use crate::detect::{detect_project, filter_schemes_for_project, pick_default_scheme};
+use crate::detect::{detect_project, filter_schemes_for_project, pick_default_scheme, assert_ios_project};
 use crate::locale::t;
 use crate::prompt::{confirm, is_interactive_tty, pick_one_with_default};
 use crate::global_store::{load_global_file};
@@ -14,6 +14,7 @@ use crate::xcodebuild::list_schemes;
 /// When `run_after` is `Some(true)` / `Some(false)`, skip the prompt.
 pub fn configure_project(root: &Path, run_after: Option<bool>) -> Result<RunnerConfig> {
     let project = detect_project(root)?;
+    assert_ios_project(root, &project)?;
 
     let schemes = list_schemes(root, &project)?;
     let scheme_labels = filter_schemes_for_project(&schemes, &project);

@@ -37,7 +37,8 @@ pub use destination::{
     list_run_destinations, validate_xcodebuild_destination,
 };
 pub use detect::{
-    DetectedProject, create_config, detect_project, filter_schemes_for_project, pick_default_scheme,
+    DetectedProject, assert_ios_project, create_config, detect_project, filter_schemes_for_project,
+    pick_default_scheme,
 };
 pub use ensure::{EnsureReport, ensure_project};
 pub use switch::switch_destination;

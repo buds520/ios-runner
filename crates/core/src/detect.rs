@@ -1,11 +1,13 @@
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use anyhow::{Context, Result, bail};
 use walkdir::WalkDir;
 
 use crate::config::{ProjectKind, RunnerConfig};
 use crate::global_store::{global_derived_data_path, load_global_file};
-use crate::xcodebuild::{default_simulator_destination, list_schemes};
+use crate::locale::tf;
+use crate::xcodebuild::{add_project_args, default_simulator_destination, list_schemes};
 
 #[derive(Debug, Clone)]
 pub struct DetectedProject {
@@ -54,6 +56,144 @@ pub fn detect_project(root: &Path) -> Result<DetectedProject> {
     bail!(
         "no .xcworkspace or .xcodeproj found. Open the directory that contains your Xcode project."
     );
+}
+
+/// iOS Runner only handles iOS / iPadOS apps. macOS-only Xcode projects are rejected early.
+pub fn assert_ios_project(root: &Path, project: &DetectedProject) -> Result<()> {
+    let schemes = list_schemes(root, project)?;
+    let filtered = filter_schemes_for_project(&schemes, project);
+    let scheme = pick_default_scheme(&schemes, project)
+        .or_else(|| filtered.first().cloned())
+        .with_context(|| format!("no schemes in {}", project.path.display()))?;
+
+    let platforms = supported_platforms_for_scheme(root, project, &scheme)?;
+    if platforms.is_empty() {
+        if pbxproj_looks_macos_only(project)? {
+            return Err(macos_only_error(&scheme));
+        }
+        return Ok(());
+    }
+
+    if platforms_support_ios(&platforms) {
+        return Ok(());
+    }
+
+    if platforms_macos_only(&platforms) {
+        return Err(macos_only_error(&scheme));
+    }
+
+    bail!(
+        "{}",
+        tf(
+            || format!(
+                "iOS Runner 仅支持 iOS / iPadOS 工程。Scheme「{scheme}」的平台为：{}",
+                platforms.join(", ")
+            ),
+            || format!(
+                "iOS Runner only supports iOS / iPadOS projects. Scheme「{scheme}」platforms: {}",
+                platforms.join(", ")
+            ),
+        )
+    )
+}
+
+fn macos_only_error(scheme: &str) -> anyhow::Error {
+    anyhow::anyhow!(
+        "{}",
+        tf(
+            || format!(
+                "iOS Runner 仅支持 iOS / iPadOS 工程；检测到 Scheme「{scheme}」是 macOS 应用，请在 Xcode 中编译 Mac 目标。"
+            ),
+            || format!(
+                "iOS Runner only supports iOS / iPadOS projects. Scheme「{scheme}」is a macOS app — build it in Xcode."
+            ),
+        )
+    )
+}
+
+fn supported_platforms_for_scheme(
+    root: &Path,
+    project: &DetectedProject,
+    scheme: &str,
+) -> Result<Vec<String>> {
+    let mut cmd = Command::new("xcodebuild");
+    add_project_args(&mut cmd, project);
+    cmd.args([
+        "-scheme",
+        scheme,
+        "-configuration",
+        "Debug",
+        "-showBuildSettings",
+    ]);
+
+    let output = cmd
+        .current_dir(root)
+        .output()
+        .context("xcodebuild -showBuildSettings")?;
+
+    let text = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let mut platforms = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("SUPPORTED_PLATFORMS = ") else {
+            continue;
+        };
+        for token in rest.split_whitespace() {
+            if !platforms.iter().any(|p| p == token) {
+                platforms.push(token.to_string());
+            }
+        }
+    }
+    Ok(platforms)
+}
+
+fn platforms_support_ios(platforms: &[String]) -> bool {
+    platforms.iter().any(|p| {
+        p == "iphoneos"
+            || p == "iphonesimulator"
+            || p.starts_with("iphoneos")
+            || p.starts_with("iphonesimulator")
+    })
+}
+
+fn platforms_macos_only(platforms: &[String]) -> bool {
+    !platforms.is_empty()
+        && platforms
+            .iter()
+            .all(|p| p == "macosx" || p == "macos")
+}
+
+fn pbxproj_looks_macos_only(project: &DetectedProject) -> Result<bool> {
+    let pbx = match project.kind {
+        ProjectKind::Project => project.path.join("project.pbxproj"),
+        ProjectKind::Workspace => {
+            let stem = project
+                .path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            project
+                .path
+                .parent()
+                .map(|p| p.join(format!("{stem}.xcodeproj/project.pbxproj")))
+                .filter(|p| p.is_file())
+                .unwrap_or_else(|| project.path.join("project.pbxproj"))
+        }
+    };
+    if !pbx.is_file() {
+        return Ok(false);
+    }
+    let text = std::fs::read_to_string(&pbx).with_context(|| format!("read {}", pbx.display()))?;
+    let has_ios = text.contains("iphoneos")
+        || text.contains("iphonesimulator")
+        || text.contains("TARGETED_DEVICE_FAMILY");
+    let has_mac = text.contains("SDKROOT = macosx") || text.contains("SUPPORTED_PLATFORMS = macosx");
+    Ok(has_mac && !has_ios)
 }
 
 fn find_xcode_file(
@@ -124,6 +264,7 @@ pub fn pick_default_scheme(schemes: &[String], project: &DetectedProject) -> Opt
 }
 
 pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerConfig> {
+    assert_ios_project(root, project)?;
     let schemes = list_schemes(root, project)?;
     let scheme = pick_default_scheme(&schemes, project)
         .with_context(|| format!("no schemes in {}", project.path.display()))?;
@@ -256,5 +397,18 @@ mod tests {
             Some("App")
         );
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn platforms_macos_only_detects_mac_app() {
+        assert!(platforms_macos_only(&["macosx".into()]));
+        assert!(!platforms_macos_only(&["iphoneos".into(), "iphonesimulator".into()]));
+        assert!(!platforms_macos_only(&["macosx".into(), "iphoneos".into()]));
+    }
+
+    #[test]
+    fn platforms_support_ios_detection() {
+        assert!(platforms_support_ios(&["iphoneos".into(), "iphonesimulator".into()]));
+        assert!(!platforms_support_ios(&["macosx".into()]));
     }
 }

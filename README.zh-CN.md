@@ -59,6 +59,8 @@ git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-run
 
 **重复任务** → 删工程内 `.zed/tasks.json`，执行 `ios-runner ensure --quiet`。
 
+**macOS 工程** → iOS Runner 仅支持 iOS / iPadOS，Mac 应用请在 Xcode 中编译。
+
 **卸载** → `~/.ios-runner/bin/ios-runner uninstall`，Zed Extensions 里禁用插件。（CLI 不在 PATH 时用完整路径；重装 `./install-dev.sh` 后会写入 PATH）
 
 更多：[docs/ZED_DEV_EXTENSION.md](docs/ZED_DEV_EXTENSION.md)
