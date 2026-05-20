@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-20
+
+### Fixed
+- `install-dev.sh` uses the cloned repo when run from it (no longer redirects to `~/.ios-runner/src/ios-runner`)
+- Clearer post-install steps: plugin source dir vs your iOS app project dir
+
+### Changed
+- README: two-folder table; recommend `~/ios-runner` clone path
+- Removed misleading `doctor` run from plugin repo during install
+
 ## [0.3.3] - 2026-05-20
 
 ### Added

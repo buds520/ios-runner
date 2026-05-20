@@ -52,25 +52,28 @@ CocoaPods 工程：先在终端 `pod install`，再 Open Folder 到 **`.xcworksp
 
 ## 方式二：本地扩展
 
-> **和 Zed 的关系：** 安装 Zed **不会**自动安装 Rust。  
-> - **方式一（扩展市场）：** 不需要 Rust，扩展和 CLI 都是预编译好的。  
-> - **方式二（本地扩展）：** `install-dev.sh` 会在本机**没有 rustup 时自动安装 Rust**，并添加 Zed 编译 Dev Extension 所需的 `wasm32-wasip2`；若只有 Homebrew 的 `cargo`（无 rustup），需改用手动安装 [rustup](https://rustup.rs/)。
+> **两个目录，别搞混：**
+> | 目录 | 是什么 | 放哪 |
+> |------|--------|------|
+> | **插件源码** | iOS Runner 仓库（含 `extension.toml`） | 任意位置即可，如 `~/ios-runner` |
+> | **你的 iOS 工程** | 你要编译运行的 App | Open Folder 打开这个，**不要**把插件 clone 进 App 里 |
 
-执行（会自动处理 Rust，无需事先安装）：
+> **Rust：** 方式一不需要 Rust。方式二的 `install-dev.sh` 会在缺少 rustup 时**自动安装**，并添加 Zed 所需的 `wasm32-wasip2`。
+
+在终端执行（clone 位置随意，**不要**放在你的 App 工程目录里）：
 
 ```bash
-git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh
+git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-runner && ./install-dev.sh
 ```
 
-脚本会编译 CLI、写入 `~/.config/zed/tasks.json` 和快捷键。
+脚本会编译 CLI 到 `~/.ios-runner/bin`，并写入 `~/.config/zed/tasks.json` 和快捷键。
 
 然后在 Zed 里：
 
-1. **Extensions** → **Install Dev Extension**
-2. 选择刚才 clone 的目录（含 `extension.toml`）
-3. **Cmd+Q** 完全退出 Zed，再重新打开
-4. **File → Open Folder** → 你的 iOS 工程
-5. **Cmd+Shift+U** 初始化，或 **Cmd+Shift+R** 直接运行
+1. **Extensions** → **Install Dev Extension** → 选 **`~/ios-runner`**（插件源码，含 `extension.toml`）
+2. **Cmd+Q** 完全退出 Zed，再重新打开
+3. **File → Open Folder** → 选**你的 iOS App 工程**（含 `.xcodeproj` / `.xcworkspace`）
+4. **Cmd+Shift+U** 初始化，或 **Cmd+Shift+R** 直接运行
 
 ---
 

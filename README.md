@@ -52,25 +52,28 @@ No need to clone this repo or run `cargo install`.
 
 ## Method 2: Local dev extension
 
-> **Zed vs Rust:** Installing Zed does **not** install Rust on your Mac.  
-> - **Method 1 (marketplace):** No Rust needed — extension and CLI are prebuilt.  
-> - **Method 2 (local):** `install-dev.sh` **installs rustup automatically** when missing, and adds the `wasm32-wasip2` target for Zed Dev Extension builds. Homebrew-only `cargo` (without rustup) is not supported — install [rustup](https://rustup.rs/) manually.
+> **Two folders — don't mix them up:**
+> | Folder | What it is | Where |
+> | ------ | ---------- | ----- |
+> | **Plugin source** | This repo (contains `extension.toml`) | Anywhere, e.g. `~/ios-runner` |
+> | **Your iOS app** | The app you build and run | **Open Folder** in Zed — do **not** clone the plugin inside your app repo |
 
-Run (Rust is handled by the script if needed):
+> **Rust:** Method 1 needs no Rust. Method 2's `install-dev.sh` **auto-installs rustup** when missing and adds `wasm32-wasip2` for Zed.
+
+Run in Terminal (clone anywhere — **not** inside your app project):
 
 ```bash
-git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh
+git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-runner && ./install-dev.sh
 ```
 
-This builds the CLI and writes `~/.config/zed/tasks.json` + keymap.
+This builds the CLI to `~/.ios-runner/bin` and writes global Zed tasks + keymap.
 
 Then in Zed:
 
-1. **Extensions** → **Install Dev Extension**
-2. Select the cloned directory (contains `extension.toml`)
-3. **Cmd+Q** to quit Zed completely, then reopen
-4. **File → Open Folder** → your iOS project
-5. **Cmd+Shift+U** to set up, or **Cmd+Shift+R** to run
+1. **Extensions** → **Install Dev Extension** → select **`~/ios-runner`** (plugin source with `extension.toml`)
+2. **Cmd+Q** to quit Zed completely, then reopen
+3. **File → Open Folder** → **your iOS app project** (contains `.xcodeproj` / `.xcworkspace`)
+4. **Cmd+Shift+U** to set up, or **Cmd+Shift+R** to run
 
 ---
 

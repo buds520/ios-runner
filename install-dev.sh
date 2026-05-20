@@ -3,10 +3,11 @@
 set -euo pipefail
 
 REPO_URL="${IOS_RUNNER_REPO:-https://github.com/buds520/ios-runner.git}"
-SRC_DIR="${HOME}/.ios-runner/src/ios-runner"
+CACHE_DIR="${HOME}/.ios-runner/src/ios-runner"
 INSTALL_BIN="${HOME}/.ios-runner/bin/ios-runner"
 RUSTUP_URL="https://sh.rustup.rs"
 WASM_TARGET="wasm32-wasip2"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [[ "$(uname -s)" != Darwin ]]; then
   echo "iOS Runner requires macOS." >&2
@@ -55,31 +56,49 @@ ensure_rust() {
   fi
 }
 
+resolve_src_dir() {
+  if [[ -f "${SCRIPT_DIR}/extension.toml" ]]; then
+    SRC_DIR="${SCRIPT_DIR}"
+    echo "→ 使用当前目录的插件源码: ${SRC_DIR}"
+    return
+  fi
+
+  SRC_DIR="${CACHE_DIR}"
+  if [[ -d "${SRC_DIR}/.git" ]]; then
+    echo "→ 更新插件源码缓存 ${SRC_DIR}"
+    git -C "${SRC_DIR}" pull --ff-only
+  else
+    echo "→ 克隆插件源码到 ${SRC_DIR}"
+    mkdir -p "$(dirname "${SRC_DIR}")"
+    git clone "${REPO_URL}" "${SRC_DIR}"
+  fi
+}
+
 ensure_rust
+resolve_src_dir
 
 mkdir -p "${HOME}/.ios-runner/bin"
 
-if [[ -d "$SRC_DIR/.git" ]]; then
-  echo "→ Updating $SRC_DIR"
-  git -C "$SRC_DIR" pull --ff-only
-else
-  echo "→ Cloning $REPO_URL → $SRC_DIR"
-  mkdir -p "$(dirname "$SRC_DIR")"
-  git clone "$REPO_URL" "$SRC_DIR"
-fi
+echo "→ 编译 CLI"
+(cd "${SRC_DIR}/crates" && cargo build -q -p ios-runner-cli --release)
+cp "${SRC_DIR}/crates/target/release/ios-runner" "${INSTALL_BIN}"
+chmod +x "${INSTALL_BIN}"
 
-echo "→ Building CLI"
-(cd "$SRC_DIR/crates" && cargo build -q -p ios-runner-cli --release)
-cp "$SRC_DIR/crates/target/release/ios-runner" "$INSTALL_BIN"
-chmod +x "$INSTALL_BIN"
-
-echo "→ Installing Zed tasks and keymap"
-"$INSTALL_BIN" install-zed-tasks
-
-echo "→ Verifying"
-"$INSTALL_BIN" doctor || true
+echo "→ 写入 Zed 全局任务与快捷键"
+"${INSTALL_BIN}" install-zed-tasks
 
 echo ""
-echo "✓ Dev install complete."
-echo "  Next: Zed → Extensions → Install Dev Extension → select: $SRC_DIR"
-echo "        File → Open Folder → your iOS project → Cmd+Shift+U / Cmd+Shift+R"
+echo "✓ 安装完成"
+echo ""
+echo "  两个目录，不要搞混："
+echo "    • 插件源码（下面 ① 选这个）: ${SRC_DIR}"
+echo "    • 你的 iOS App 工程（下面 ② Open Folder 选那个）"
+echo ""
+echo "  ① Zed → Extensions → Install Dev Extension"
+echo "     选择含 extension.toml 的目录 → ${SRC_DIR}"
+echo "     （不是你的 App 工程，也无需 clone 进 App 工程里）"
+echo ""
+echo "  ② Cmd+Q 退出 Zed 再打开 → File → Open Folder → 你的 iOS 工程"
+echo "  ③ Cmd+Shift+U 初始化，Cmd+Shift+R 运行"
+echo ""
+echo "  检查环境（在 App 工程目录下执行）: ios-runner doctor"

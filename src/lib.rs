@@ -355,7 +355,10 @@ fn print_dev_extension_hint() {
 Dev Extension 需要单独安装 CLI，任务面板才会完整可用。
 
 【方式一】一键安装（推荐，缺 Rust 时会自动安装 rustup）
-  git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh
+  git clone https://github.com/buds520/ios-runner.git ~/ios-runner
+  cd ~/ios-runner && ./install-dev.sh
+  → Zed Install Dev Extension 选 ~/ios-runner（插件源码，不是 App 工程）
+  → Open Folder 选你的 iOS App 工程
 
 【方式二】手动
   cd /path/to/ios-runner/crates && cargo build -p ios-runner-cli --release
