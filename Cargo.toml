@@ -1,7 +1,7 @@
 # Zed 扩展包（单独编译为 wasm32-wasip2，不要与 CLI 放在同一 workspace）
 [package]
 name = "ios-runner-extension"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/buds520/ios-runner"

@@ -65,6 +65,8 @@ ios-runner configure --run
 git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh
 ```
 
+`install-dev.sh` 会在缺少 rustup 时自动安装 Rust，并添加 `wasm32-wasip2`（Zed Dev Extension 编译 WASM 需要）。
+
 见 [ZED_DEV_EXTENSION.md](ZED_DEV_EXTENSION.md)。选择**仓库根目录**（含 `extension.toml`）。
 
 CLI 补充命令：`ios-runner switch`（切换设备）、`IOS_RUNNER_SKIP_IF_FRESH=1`（可选增量跳过编译）。

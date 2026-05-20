@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-05-20
+
+### Added
+- `install-dev.sh` auto-installs rustup when missing; adds `wasm32-wasip2` for Zed Dev Extension
+
+### Changed
+- README: clarify Zed ≠ Rust; local install no longer requires manual rustup first
+- Dev Extension hint uses `git clone && ./install-dev.sh` instead of curl pipe
+
 ## [0.3.2] - 2026-05-20
 
 ### Changed

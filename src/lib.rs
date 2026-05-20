@@ -354,8 +354,8 @@ fn print_dev_extension_hint() {
 
 Dev Extension 需要单独安装 CLI，任务面板才会完整可用。
 
-【方式一】一键安装（推荐）
-  curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/install-dev.sh | bash
+【方式一】一键安装（推荐，缺 Rust 时会自动安装 rustup）
+  git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh
 
 【方式二】手动
   cd /path/to/ios-runner/crates && cargo build -p ios-runner-cli --release

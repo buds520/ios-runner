@@ -52,7 +52,11 @@ CocoaPods 工程：先在终端 `pod install`，再 Open Folder 到 **`.xcworksp
 
 ## 方式二：本地扩展
 
-终端执行（需要已安装 [Rust](https://rustup.rs/)）：
+> **和 Zed 的关系：** 安装 Zed **不会**自动安装 Rust。  
+> - **方式一（扩展市场）：** 不需要 Rust，扩展和 CLI 都是预编译好的。  
+> - **方式二（本地扩展）：** `install-dev.sh` 会在本机**没有 rustup 时自动安装 Rust**，并添加 Zed 编译 Dev Extension 所需的 `wasm32-wasip2`；若只有 Homebrew 的 `cargo`（无 rustup），需改用手动安装 [rustup](https://rustup.rs/)。
+
+执行（会自动处理 Rust，无需事先安装）：
 
 ```bash
 git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh

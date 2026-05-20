@@ -52,7 +52,11 @@ No need to clone this repo or run `cargo install`.
 
 ## Method 2: Local dev extension
 
-Run in Terminal ([Rust](https://rustup.rs/) required):
+> **Zed vs Rust:** Installing Zed does **not** install Rust on your Mac.  
+> - **Method 1 (marketplace):** No Rust needed — extension and CLI are prebuilt.  
+> - **Method 2 (local):** `install-dev.sh` **installs rustup automatically** when missing, and adds the `wasm32-wasip2` target for Zed Dev Extension builds. Homebrew-only `cargo` (without rustup) is not supported — install [rustup](https://rustup.rs/) manually.
+
+Run (Rust is handled by the script if needed):
 
 ```bash
 git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh

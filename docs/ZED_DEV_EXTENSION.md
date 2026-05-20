@@ -6,6 +6,10 @@
 
 Zed **只支持** [rustup](https://rustup.rs/) 安装的 Rust，Homebrew 的 `rustc` 无效。
 
+推荐：在仓库根目录运行 `./install-dev.sh`，脚本会在缺少 rustup 时**自动安装** Rust 并添加 WASM target。
+
+手动安装：
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
@@ -13,6 +17,8 @@ rustc --version
 ```
 
 ### 原因 2：缺少 WASM 目标
+
+`install-dev.sh` 会自动添加；手动执行：
 
 ```bash
 rustup target add wasm32-wasip2
