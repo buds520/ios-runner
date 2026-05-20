@@ -4,7 +4,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/install-cli.sh | bash
 set -euo pipefail
 
-VERSION="${IOS_RUNNER_VERSION:-0.2.4}"
+VERSION="${IOS_RUNNER_VERSION:-0.2.5}"
 REPO="buds520/ios-runner"
 INSTALL_BIN="${HOME}/.ios-runner/bin/ios-runner"
 
