@@ -38,22 +38,13 @@ pub fn warn(msg: &str) {
     let _ = writeln!(io::stderr(), "{}", style(msg, "33"));
 }
 
-pub fn hint_xcbeautify() {
-    if which_xcbeautify() {
+/// Warn once when user enabled xcbeautify in config but the binary is missing.
+pub fn warn_xcbeautify_missing(enabled_in_config: bool) {
+    if !enabled_in_config || crate::has_xcbeautify() {
         return;
     }
     warn(crate::locale::t(
-        "提示: 安装 xcbeautify 可美化编译日志 → brew install xcbeautify",
-        "Tip: install xcbeautify for prettier build logs → brew install xcbeautify",
+        "xcbeautify 未安装，回退到原始 xcodebuild 输出。安装: brew install xcbeautify",
+        "xcbeautify not installed, falling back to raw xcodebuild output. Install: brew install xcbeautify",
     ));
-}
-
-fn which_xcbeautify() -> bool {
-    std::process::Command::new("xcbeautify")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
 }

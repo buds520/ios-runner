@@ -15,7 +15,7 @@ use crate::destination::{
 use crate::device::{ensure_device_ready, report_devicectl_failure};
 use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
 use crate::locale::t;
-use crate::terminal_ui::{hint_xcbeautify, info, section, success, warn};
+use crate::terminal_ui::{info, section, success, warn};
 
 pub fn list_schemes(root: &Path, project: &DetectedProject) -> Result<Vec<String>> {
     let mut cmd = Command::new("xcodebuild");
@@ -95,8 +95,6 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
         t("编译", "Build"),
         Some(&format!("{} · {}", config.scheme, config.device_summary())),
     );
-    hint_xcbeautify();
-
     if config.resolve_packages_before_build {
         info(t("解析 Swift Package…", "Resolving Swift packages…"));
         if let Err(e) = resolve_packages_quiet(root, config) {
@@ -133,7 +131,8 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false);
 
-    let result = if config.xcbeautify && which_xcbeautify() && !raw_logs {
+    let has_xcbeautify = crate::has_xcbeautify();
+    let result = if config.xcbeautify && has_xcbeautify && !raw_logs {
         run_xcodebuild_piped(cmd, root)
     } else {
         if raw_logs {
@@ -141,6 +140,8 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
                 "完整 xcodebuild 日志（IOS_RUNNER_RAW_LOG=1）",
                 "Full xcodebuild log (IOS_RUNNER_RAW_LOG=1)",
             ));
+        } else {
+            crate::terminal_ui::warn_xcbeautify_missing(config.xcbeautify);
         }
         run_command(cmd, root, "build")
     };
@@ -419,16 +420,6 @@ fn xcodebuild_failure_message(label: &str, code: Option<i32>) -> String {
         || format!("{label} 失败 (exit {code:?})"),
         || format!("{label} failed (exit {code:?})"),
     )
-}
-
-fn which_xcbeautify() -> bool {
-    Command::new("xcbeautify")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
 }
 
 /// Pipe xcodebuild stdout/stderr through xcbeautify (SweetPad default when installed).

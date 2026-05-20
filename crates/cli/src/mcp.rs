@@ -26,9 +26,6 @@ pub fn run_mcp() -> Result<()> {
 
         let result = match method {
             "initialize" => {
-                let _ = std::process::Command::new(std::env::current_exe().unwrap_or_default())
-                    .arg("install-self")
-                    .status();
                 let setup_msg = auto_setup(&root);
                 eprintln!("[ios-runner] {setup_msg}");
                 json!({
@@ -43,13 +40,42 @@ pub fn run_mcp() -> Result<()> {
             "notifications/initialized" => continue,
             "tools/list" => json!({
                 "tools": [
-                    tool_desc("ios_runner_detect", "Detect Xcode/CocoaPods project in workspace"),
+                    tool_desc(
+                        "ios_runner_detect",
+                        "Detect Xcode/CocoaPods project in workspace",
+                        json!({ "type": "object", "properties": {} }),
+                    ),
                     tool_desc(
                         "ios_runner_setup",
-                        "Detect Xcode project and save run settings to ~/.config/ios-runner/config.toml (not .ios-runner.toml in repo)",
+                        "Detect Xcode project and save run settings to ~/.config/ios-runner/config.toml",
+                        json!({ "type": "object", "properties": {} }),
                     ),
-                    tool_desc("ios_runner_build", "Build the iOS app with xcodebuild"),
-                    tool_desc("ios_runner_run", "Build, install on simulator, and launch"),
+                    tool_desc(
+                        "ios_runner_build",
+                        "Build the iOS app with xcodebuild",
+                        json!({
+                            "type": "object",
+                            "properties": {
+                                "scheme": { "type": "string", "description": "Override Xcode scheme" },
+                                "configuration": { "type": "string", "enum": ["Debug", "Release"] },
+                                "destination": { "type": "string", "description": "xcodebuild -destination string" },
+                                "verbose": { "type": "boolean", "description": "Set IOS_RUNNER_RAW_LOG=1" }
+                            }
+                        }),
+                    ),
+                    tool_desc(
+                        "ios_runner_run",
+                        "Build, install on simulator/device, and launch",
+                        json!({
+                            "type": "object",
+                            "properties": {
+                                "scheme": { "type": "string" },
+                                "configuration": { "type": "string", "enum": ["Debug", "Release"] },
+                                "destination": { "type": "string" },
+                                "verbose": { "type": "boolean" }
+                            }
+                        }),
+                    ),
                 ]
             }),
             "tools/call" => handle_tool_call(&root, request.get("params"))?,
@@ -71,12 +97,34 @@ pub fn run_mcp() -> Result<()> {
     Ok(())
 }
 
-fn tool_desc(name: &str, description: &str) -> Value {
+fn tool_desc(name: &str, description: &str, input_schema: Value) -> Value {
     json!({
         "name": name,
         "description": description,
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": input_schema
     })
+}
+
+fn apply_tool_args(config: &mut RunnerConfig, args: Option<&Value>) {
+    let Some(args) = args else {
+        return;
+    };
+    if let Some(s) = args.get("scheme").and_then(|v| v.as_str()) {
+        config.scheme = s.to_string();
+    }
+    if let Some(d) = args.get("destination").and_then(|v| v.as_str()) {
+        config.destination = d.to_string();
+    }
+    if let Some(c) = args.get("configuration").and_then(|v| v.as_str()) {
+        config.configuration = c.to_string();
+    }
+    if args
+        .get("verbose")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
+        std::env::set_var("IOS_RUNNER_RAW_LOG", "1");
+    }
 }
 
 fn handle_tool_call(root: &Path, params: Option<&Value>) -> Result<Value> {
@@ -84,6 +132,7 @@ fn handle_tool_call(root: &Path, params: Option<&Value>) -> Result<Value> {
         .and_then(|p| p.get("name"))
         .and_then(|n| n.as_str())
         .unwrap_or("");
+    let arguments = params.and_then(|p| p.get("arguments"));
 
     let text = match name {
         "ios_runner_detect" => match detect_project(root) {
@@ -96,13 +145,15 @@ fn handle_tool_call(root: &Path, params: Option<&Value>) -> Result<Value> {
         },
         "ios_runner_setup" => auto_setup(root),
         "ios_runner_build" => {
-            let config = RunnerConfig::load(root)?;
+            let mut config = RunnerConfig::load(root)?;
+            apply_tool_args(&mut config, arguments);
             config.validate(root)?;
             build_project(root, &config)?;
             "Build succeeded.".to_string()
         }
         "ios_runner_run" => {
-            let config = RunnerConfig::load(root)?;
+            let mut config = RunnerConfig::load(root)?;
+            apply_tool_args(&mut config, arguments);
             config.validate(root)?;
             run_app(root, &config)?;
             "Run succeeded.".to_string()

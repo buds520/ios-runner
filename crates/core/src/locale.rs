@@ -10,7 +10,8 @@ pub enum Lang {
 impl Lang {
     pub fn parse(s: &str) -> Self {
         let s = s.trim();
-        if s.eq_ignore_ascii_case("en") || s.starts_with("en-") {
+        let lower = s.to_ascii_lowercase();
+        if lower == "en" || lower.starts_with("en-") {
             Lang::En
         } else {
             Lang::ZhCn
@@ -70,5 +71,18 @@ pub fn tf(zh: impl FnOnce() -> String, en: impl FnOnce() -> String) -> String {
     match lang() {
         Lang::ZhCn => zh(),
         Lang::En => en(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_lang() {
+        assert_eq!(Lang::parse("en"), Lang::En);
+        assert_eq!(Lang::parse("EN-US"), Lang::En);
+        assert_eq!(Lang::parse("zh-CN"), Lang::ZhCn);
+        assert_eq!(Lang::parse("ja"), Lang::ZhCn);
     }
 }

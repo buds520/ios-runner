@@ -169,3 +169,28 @@ fn local_config_path(root: &Path) -> Result<PathBuf> {
         )
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_project_xcworkspace() {
+        let mut c = RunnerConfig {
+            kind: ProjectKind::Workspace,
+            path: "Demo.xcodeproj/project.xcworkspace".into(),
+            scheme: "App".into(),
+            configuration: "Debug".into(),
+            destination: "platform=iOS Simulator,name=iPhone 16".into(),
+            derived_data: ".ios-runner/DerivedData".into(),
+            xcbeautify: true,
+            resolve_packages_before_build: true,
+            bring_simulator_to_foreground: true,
+            development_team: None,
+            language: "zh-CN".into(),
+        };
+        c.normalize();
+        assert_eq!(c.path, "Demo.xcodeproj");
+        assert_eq!(c.kind, ProjectKind::Project);
+    }
+}

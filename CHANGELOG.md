@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-05-20
+
+### Added
+- CI workflow: `cargo test` + `clippy` on push/PR (macos-14)
+- Unit tests: destination, config, locale, global_store, detect, (10+ total)
+- MCP: `inputSchema` + optional `scheme` / `destination` / `configuration` / `verbose`
+- `doctor`: CLI path, global tasks health, saved destination validation
+
+### Changed
+- README / QUICKSTART / DEVELOPMENT / AGENTS / USER_EXPERIENCE aligned with v0.2.2+ flow
+- Zed tasks unified via `tasks::TASK_DEFS`
+- `xcbeautify` probe cached (`OnceLock`); single warn when enabled but missing
+- Project detection deduplicated (`find_xcode_file`)
+- Destination line parser accepts `key=` and `key:` (xcodebuild formats)
+- MCP `initialize` no longer runs `install-self` side effect
+
 ## [0.2.2] - 2026-05-19
 
 ### Added

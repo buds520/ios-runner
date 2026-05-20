@@ -54,4 +54,4 @@ cargo install --path cli --locked
 
 ## 安装后仍无法 Run
 
-扩展 MCP 会调用 `xcode-pilot mcp`，需先安装 CLI（见上）。
+扩展 MCP 会调用 `ios-runner mcp`；通常扩展 bootstrap 已安装 CLI 到 `~/.ios-runner/bin`。若无，见上 `cargo install` 或 GitHub Release。

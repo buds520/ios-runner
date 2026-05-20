@@ -6,8 +6,9 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use ios_runner_core::{
     RunnerConfig, build_project, configure_project, detect_project, ensure_project,
-    init_locale, install_global_zed_keymap, install_global_zed_tasks, list_run_destinations,
-    list_schemes, list_simulators, resolve_packages, run_app, t, tf, uninstall_ios_runner,
+    global_zed_tasks_contain_legacy_scripts, init_locale, install_global_zed_keymap,
+    install_global_zed_tasks, is_placeholder_destination, list_run_destinations, list_schemes,
+    list_simulators, resolve_packages, run_app, t, tf, uninstall_ios_runner, zed_config_dir,
     UninstallOptions,
 };
 
@@ -236,6 +237,29 @@ fn cmd_install_self() -> Result<()> {
 fn cmd_doctor(root: &Path) -> Result<()> {
     let mut ok = true;
 
+    eprintln!("iOS-Runner {}", env!("CARGO_PKG_VERSION"));
+
+    let home = dirs::home_dir().context("home directory")?;
+    let bundled_cli = home.join(".ios-runner/bin/ios-runner");
+    if bundled_cli.is_file() {
+        eprintln!("✓ CLI {}", bundled_cli.display());
+    } else if let Ok(exe) = env::current_exe() {
+        eprintln!("✓ CLI (current) {}", exe.display());
+    } else {
+        eprintln!("⚠ CLI not at ~/.ios-runner/bin/ios-runner — reload Zed extension or run install-self");
+    }
+
+    if global_zed_tasks_contain_legacy_scripts().unwrap_or(false) {
+        eprintln!("⚠ Global Zed tasks use legacy scripts — run: ios-runner install-zed-tasks");
+    } else if zed_config_dir()
+        .map(|d| d.join("tasks.json").is_file())
+        .unwrap_or(false)
+    {
+        eprintln!("✓ Global Zed tasks");
+    } else {
+        eprintln!("⚠ No global tasks — run: ios-runner install-zed-tasks");
+    }
+
     for (name, args) in [
         ("xcodebuild", &["-version"][..]),
         ("xcrun", &["--version"][..]),
@@ -272,6 +296,36 @@ fn cmd_doctor(root: &Path) -> Result<()> {
             eprintln!("✗ {e}");
             ok = false;
         }
+    }
+
+    match RunnerConfig::load(root) {
+        Ok(config) => {
+            if is_placeholder_destination(&config.destination) {
+                eprintln!(
+                    "⚠ {}",
+                    t(
+                        "已保存的 destination 无效 — 请运行 ios-runner configure --run",
+                        "Saved destination is invalid — run ios-runner configure --run",
+                    )
+                );
+                ok = false;
+            } else {
+                eprintln!(
+                    "✓ {}",
+                    tf(
+                        || format!("已配置 scheme={} · {}", config.scheme, config.device_summary()),
+                        || format!("Configured scheme={} · {}", config.scheme, config.device_summary()),
+                    )
+                );
+            }
+        }
+        Err(_) => eprintln!(
+            "ℹ {}",
+            t(
+                "此工程尚无配置 — 运行 ios-runner ensure",
+                "No config for this project — run ios-runner ensure",
+            )
+        ),
     }
 
     if ok {

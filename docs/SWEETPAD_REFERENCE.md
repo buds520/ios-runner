@@ -1,4 +1,6 @@
-# SweetPad 技术参考与 Xcode Pilot 对照
+# SweetPad 技术参考与 iOS-Runner 对照
+
+> 历史文档中「Xcode Pilot」即现 **iOS-Runner**（`ios-runner` CLI / `ios-runner` 扩展）。
 
 参考仓库：[sweetpad-dev/sweetpad](https://github.com/sweetpad-dev/sweetpad)（VS Code / Cursor 的 iOS 开发扩展）。
 

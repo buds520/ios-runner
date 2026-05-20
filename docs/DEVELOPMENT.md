@@ -1,116 +1,95 @@
-# Xcode Pilot — 开发文档
+# iOS-Runner — 开发文档
 
 ## 产品定位
 
-**Xcode Pilot** 是为 [Zed](https://zed.dev/) 准备的 Apple 平台开发辅助扩展，聚焦 **Xcode 工程的编译与运行**（不含调试、单测 gutter、SwiftUI Preview）。
+**iOS-Runner** 是为 [Zed](https://zed.dev/) 准备的 iOS 工程辅助工具，聚焦 **Xcode 工程的编译与运行**（不含调试、单测 gutter、SwiftUI Preview）。
 
-- **扩展 ID**：`xcode-pilot`
-- **CLI 命令**：`xcode-pilot`
-- **上架目标**：[zed-industries/extensions](https://github.com/zed-industries/extensions)
+- **扩展 ID**：`ios-runner`
+- **CLI**：`ios-runner`
+- **仓库**：[buds520/ios-runner](https://github.com/buds520/ios-runner)
 
 ## 设计原则
 
-1. **复用 Xcode 工具链**：`xcodebuild`、`xcrun simctl`，不引入 xcede 等第三方构建器。
-2. **CLI 为主、扩展为辅**：Zed 扩展 API 暂不支持动态 tasks / 写工作区文件；由 CLI 生成 `.zed/tasks.json` 与 `.xcode-pilot.toml`。
-3. **工程类型**：以 `.xcodeproj` / `.xcworkspace` 为主；CocoaPods、工程内 SPM 通过 `xcodebuild` 统一处理。
+1. **复用 Xcode 工具链**：`xcodebuild`、`xcrun simctl` / `devicectl`。
+2. **CLI 为主、扩展为辅**：WASM 扩展负责 bootstrap CLI + 全局任务；编译运行由 CLI 执行。
+3. **少污染工程**：默认配置在 `~/.config/ios-runner/config.toml`；全局 Zed 任务在 `~/.config/zed/tasks.json`。
+4. **CocoaPods / SPM**：通过 `xcodebuild` 统一处理；有 `Podfile` 时必须用 `.xcworkspace`。
 
 ## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Zed Editor                                              │
-│  ├─ Extension (WASM): 发现、文档、后续 MCP/动态 tasks     │
-│  └─ Tasks: 调用 `xcode-pilot build` / `xcode-pilot run` │
+│  ├─ Extension (WASM): bootstrap CLI → ~/.ios-runner/bin  │
+│  └─ Tasks / 快捷键 → ios-runner ensure|build|run       │
 └───────────────────────────┬─────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────┐
-│  xcode-pilot CLI                                         │
-│  ├─ init    → 检测工程、写配置、生成 .zed/tasks.json      │
-│  ├─ build   → xcodebuild build                           │
-│  ├─ run     → build + simctl install + launch            │
-│  ├─ doctor  → 检查 xcode-select / simctl / pod 等        │
-│  └─ list    → schemes / destinations（JSON）             │
+│  ios-runner CLI (crates/cli + crates/core)               │
+│  ensure / configure / build / run / doctor / uninstall   │
 └───────────────────────────┬─────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────┐
-│  Apple: xcodebuild, xcrun simctl                         │
+│  Apple: xcodebuild, simctl, devicectl                      │
 └─────────────────────────────────────────────────────────┘
 ```
 
-## CocoaPods / Swift Package
+## 配置与任务
 
-| 场景 | 行为 |
+| 路径 | 说明 |
 |------|------|
-| 存在 `Podfile` | 优先使用 `*.xcworkspace`（非 `project.xcworkspace`）；`init` 提示执行 `pod install` |
-| 工程内 SPM | `build`/`run` 前可执行 `-resolvePackageDependencies`；`init` 生成可选 task |
-| 仅 `Package.swift`、无 Xcode 工程 | **不在 v1 范围**；文档说明请用 Swift 扩展 + `swift build` |
+| `~/.config/ios-runner/config.toml` | 按工程根路径存 scheme、destination 等 |
+| `~/.ios-runner/bin/ios-runner` | 扩展或 `install-self` 安装的 CLI |
+| `~/.config/zed/tasks.json` | `install-zed-tasks` 写入的全局任务 |
+| `~/.config/zed/keymap.json` | Cmd+Shift+E/I/R/B |
+| `.ios-runner.toml` | 仅当 `IOS_RUNNER_LOCAL_CONFIG=1` 时写入工程 |
 
-## 配置文件
-
-### `.xcode-pilot.toml`（项目根）
-
-```toml
-kind = "workspace"           # "workspace" | "project"
-path = "MyApp.xcworkspace"
-scheme = "MyApp"
-configuration = "Debug"
-destination = "platform=iOS Simulator,name=iPhone 16"
-derived_data = ".xcode-pilot/DerivedData"
-```
-
-### `.zed/tasks.json`（由 `xcode-pilot init` 生成）
-
-| Task | 说明 |
-|------|------|
-| Xcode Pilot: Build | `xcode-pilot build` |
-| Xcode Pilot: Run | `xcode-pilot run` |
-| Xcode Pilot: Resolve SPM | `xcode-pilot resolve-packages` |
-| Xcode Pilot: Pod Install | `pod install`（仅当存在 Podfile） |
+任务定义单一来源：`crates/core/src/tasks.rs` → `TASK_DEFS`。
 
 ## 本地开发
 
 ```bash
-# 构建 CLI
-cargo build -p xcode-pilot-cli
+cd crates && cargo build --workspace
+cargo install --path cli --locked
+ios-runner install-zed-tasks
 
-# 安装到 PATH（开发）
-cargo install --path crates/cli --locked
-
-# 在 Xcode 工程根目录
-xcode-pilot doctor
-xcode-pilot init
-xcode-pilot build
-xcode-pilot run
+# 在 iOS 工程目录
+ios-runner doctor
+ios-runner ensure
+ios-runner configure --run
 ```
 
 ### Zed Dev Extension
 
-1. 安装 Rust（rustup）
-2. Zed → Extensions → Install Dev Extension → 选择仓库根目录
-3. 确保 `xcode-pilot` 在 PATH（`cargo install --path crates/cli`）
-4. 在工程中执行 `xcode-pilot init`，绑定 `cmd-b` / `cmd-r`（见 README）
+见 [ZED_DEV_EXTENSION.md](ZED_DEV_EXTENSION.md)。选择**仓库根目录**（含 `extension.toml`），不要选 `XcodePilotDemo`。
 
-## 上架清单
+### 发版
 
-- [ ] 仓库根目录 `LICENSE`（MIT / Apache-2.0 / BSD-2/3）
-- [ ] `extension.toml` 字段完整且 **id 唯一**
-- [ ] 在独立仓库发布，向 `zed-industries/extensions` 提 PR（submodule + `extensions.toml`）
-- [ ] 扩展声明 `process:exec`（`xcodebuild` 等）— 用户可在设置中授权
+```bash
+./scripts/release.sh 0.2.3
+```
+
+会 bump 版本、bundle `bin/`、打 tag、推 GitHub Release、更新 extensions PR。
+
+## 测试与 CI
+
+```bash
+cd crates && cargo test --workspace
+cargo clippy --workspace -- -D warnings
+```
+
+PR / push 触发 `.github/workflows/ci.yml`。
 
 ## 版本规划
 
 | 版本 | 内容 |
 |------|------|
-| v0.1 | init / build / run / doctor / list；CocoaPods & SPM resolve |
-| v0.2 | MCP context server（Agent 内 init/doctor） |
-| v0.3 | Zed 动态 tasks API 落地后，扩展内自动发现 scheme |
+| v0.2.x | 全局配置、内置 CLI、destination 修复、uninstall |
+| v0.3 | 构建诊断、destination switch、更多测试 |
+| 未来 | Zed 动态 tasks API 落地后减少手动 `install-zed-tasks` |
 
-## SweetPad 参考
+## 参考
 
-VS Code 扩展 [sweetpad-dev/sweetpad](https://github.com/sweetpad-dev/sweetpad) 是同类产品的成熟实现。技术对照与已移植项见 [docs/SWEETPAD_REFERENCE.md](./SWEETPAD_REFERENCE.md)。
-
-## 相关链接
-
-- [Zed Tasks](https://zed.dev/docs/tasks)
-- [Zed Developing Extensions](https://zed.dev/docs/extensions/developing-extensions)
-- [xcodebuild destination](https://mokacoding.com/blog/xcodebuild-destination-options/)
+- [SWEETPAD_REFERENCE.md](SWEETPAD_REFERENCE.md)
+- [PUBLISHING.md](PUBLISHING.md)
+- [ZED_UX.md](ZED_UX.md)

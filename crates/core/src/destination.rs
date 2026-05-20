@@ -100,19 +100,26 @@ fn parse_destination_line(line: &str) -> Option<RunDestination> {
 
     for part in inner.split(',') {
         let part = part.trim();
-        if let Some(v) = part.strip_prefix("platform:") {
+        if let Some(v) = part
+            .strip_prefix("platform:")
+            .or_else(|| part.strip_prefix("platform="))
+        {
             platform = Some(v.trim().to_string());
-        } else if let Some(v) = part.strip_prefix("name:") {
+        } else if let Some(v) = part.strip_prefix("name:").or_else(|| part.strip_prefix("name=")) {
             name = Some(v.trim().to_string());
-        } else if let Some(v) = part.strip_prefix("id:") {
+        } else if let Some(v) = part.strip_prefix("id:").or_else(|| part.strip_prefix("id=")) {
             id = Some(v.trim().to_string());
-        } else if let Some(v) = part.strip_prefix("OS:") {
+        } else if let Some(v) = part.strip_prefix("OS:").or_else(|| part.strip_prefix("OS=")) {
             os = Some(v.trim().to_string());
         }
     }
 
     let platform = platform?;
     let name = name?;
+
+    if name.contains("placeholder") || name == "Any iOS Device" {
+        return None;
+    }
 
     if platform == "macOS" {
         return None;
@@ -281,5 +288,46 @@ fn apply_field(
         "name" => *name = Some(value.to_string()),
         "id" => *id = Some(value.to_string()),
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_simulator_destination() {
+        let d = parse_destination_line("{platform=iOS Simulator,name=iPhone 16,OS=18.2}").unwrap();
+        assert_eq!(d.kind, DestinationKind::Simulator);
+        assert_eq!(d.name, "iPhone 16");
+        assert!(d.destination.contains("iPhone 16"));
+    }
+
+    #[test]
+    fn parse_skips_placeholder() {
+        assert!(
+            parse_destination_line("{platform=iOS Simulator,name=placeholder}").is_none()
+        );
+    }
+
+    #[test]
+    fn validate_empty_fails() {
+        assert!(validate_xcodebuild_destination("").is_err());
+    }
+
+    #[test]
+    fn normalize_colon_legacy_format() {
+        let fixed = normalize_xcodebuild_destination(
+            "platform:iOS Simulator,name:iPhone 16",
+        )
+        .unwrap();
+        assert_eq!(fixed, "platform=iOS Simulator,name=iPhone 16");
+    }
+
+    #[test]
+    fn placeholder_rejected() {
+        assert!(is_placeholder_destination(
+            "platform=iOS Simulator,name=Any iOS Simulator Device"
+        ));
     }
 }

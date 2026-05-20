@@ -4,12 +4,10 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 
 use crate::bootstrap::lang_for_task_script;
-use crate::tasks::shell_task_with_lang;
-
-const TASK_LABEL_PREFIX: &str = "iOS-Runner:";
+use crate::tasks::{shell_tasks_for_target, TaskInstallTarget, TASK_LABEL_PREFIX};
 
 /// Detect legacy task scripts that curl-download CLI (superseded by extension bundle install).
-fn task_uses_legacy_download(task: &Value) -> bool {
+pub fn task_uses_legacy_download(task: &Value) -> bool {
     let script = task
         .get("args")
         .and_then(|a| a.as_array())
@@ -26,16 +24,21 @@ fn task_uses_legacy_download(task: &Value) -> bool {
         || script.contains("~/.ios-runner/bin/ios-runner")
 }
 
+/// True if `~/.config/zed/tasks.json` contains outdated iOS-Runner task scripts.
+pub fn global_zed_tasks_contain_legacy_scripts() -> Result<bool> {
+    let path = zed_config_dir()?.join("tasks.json");
+    if !path.is_file() {
+        return Ok(false);
+    }
+    let text = std::fs::read_to_string(&path).context("read global tasks.json")?;
+    let tasks: Vec<Value> = serde_json::from_str(&text).unwrap_or_default();
+    Ok(tasks.iter().any(task_uses_legacy_download))
+}
+
 /// Default Zed tasks (work in any iOS project via `$ZED_WORKTREE_ROOT`).
 pub fn default_task_list() -> Vec<serde_json::Value> {
     let lang = lang_for_task_script(None);
-    let st = |label, sub| shell_task_with_lang(label, sub, lang);
-    vec![
-        st("iOS-Runner: Setup Project", "ensure"),
-        st("iOS-Runner: Run", "run"),
-        st("iOS-Runner: Select Scheme & Device", "configure --run"),
-        st("iOS-Runner: Build", "build"),
-    ]
+    shell_tasks_for_target(TaskInstallTarget::Global, lang)
 }
 
 pub fn zed_config_dir() -> Result<PathBuf> {

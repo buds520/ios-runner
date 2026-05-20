@@ -7,6 +7,57 @@ use crate::bootstrap::{CLI_PATH_SHELL, lang_for_task_script, zed_task_preamble};
 use crate::detect::DetectedProject;
 use crate::locale::Lang;
 
+/// Prefix for all Zed task labels (`iOS-Runner: …`).
+pub const TASK_LABEL_PREFIX: &str = "iOS-Runner:";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskInstallTarget {
+    Global,
+    Project,
+}
+
+/// Single source of truth for Zed task labels and CLI subcommands.
+pub const TASK_DEFS: &[(&str, &str, TaskInstallTarget)] = &[
+    ("Setup Project", "ensure", TaskInstallTarget::Global),
+    ("Run", "run", TaskInstallTarget::Global),
+    ("Run", "run", TaskInstallTarget::Project),
+    ("Select Scheme & Device", "configure --run", TaskInstallTarget::Global),
+    (
+        "Select Scheme & Device",
+        "configure --run",
+        TaskInstallTarget::Project,
+    ),
+    (
+        "Select Only (no run)",
+        "configure --no-run",
+        TaskInstallTarget::Project,
+    ),
+    ("Build", "build", TaskInstallTarget::Global),
+    ("Build", "build", TaskInstallTarget::Project),
+    (
+        "Build (verbose)",
+        "build --verbose",
+        TaskInstallTarget::Project,
+    ),
+    (
+        "Resolve Swift Packages",
+        "resolve-packages",
+        TaskInstallTarget::Project,
+    ),
+];
+
+pub fn task_label(suffix: &str) -> String {
+    format!("{TASK_LABEL_PREFIX} {suffix}")
+}
+
+pub fn shell_tasks_for_target(target: TaskInstallTarget, lang: Lang) -> Vec<serde_json::Value> {
+    TASK_DEFS
+        .iter()
+        .filter(|(_, _, t)| *t == target)
+        .map(|(suffix, sub, _)| shell_task_with_lang(&task_label(suffix), sub, lang))
+        .collect()
+}
+
 fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::Value> {
     let mut map = serde_json::Map::new();
     map.insert("command".into(), json!("/bin/zsh"));
@@ -42,16 +93,7 @@ pub fn write_zed_tasks(root: &Path, project: &DetectedProject) -> Result<()> {
     let zed_dir = root.join(".zed");
     std::fs::create_dir_all(&zed_dir).context("create .zed directory")?;
     let lang = lang_for_task_script(Some(root));
-    let st = |label, sub| shell_task_with_lang(label, sub, lang);
-
-    let mut tasks = vec![
-        st("iOS-Runner: Run", "run"),
-        st("iOS-Runner: Select Scheme & Device", "configure --run"),
-        st("iOS-Runner: Select Only (no run)", "configure --no-run"),
-        st("iOS-Runner: Build", "build"),
-        st("iOS-Runner: Build (verbose)", "build --verbose"),
-        st("iOS-Runner: Resolve Swift Packages", "resolve-packages"),
-    ];
+    let mut tasks = shell_tasks_for_target(TaskInstallTarget::Project, lang);
 
     if project.has_podfile {
         let preamble = zed_task_preamble(lang);

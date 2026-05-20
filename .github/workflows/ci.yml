@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Test
+        working-directory: crates
+        run: cargo test --workspace
+
+      - name: Clippy
+        working-directory: crates
+        run: cargo clippy --workspace --all-targets -- -D warnings

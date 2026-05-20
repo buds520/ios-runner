@@ -222,3 +222,16 @@ pub fn should_write_local_config() -> bool {
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_cache_id_stable() {
+        let a = project_cache_id(Path::new("/tmp/foo"));
+        let b = project_cache_id(Path::new("/tmp/foo"));
+        assert_eq!(a, b);
+        assert!(a.starts_with("foo-"));
+    }
+}
