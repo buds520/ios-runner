@@ -3,15 +3,33 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde_json::{Value, json};
 
+use crate::bootstrap::lang_for_task_script;
+use crate::tasks::global_keymap_task_label;
+
 /// Recommended one-key actions (no `task: spawn` picker).
 pub fn default_ios_runner_bindings() -> serde_json::Map<String, Value> {
+    let lang = lang_for_task_script(None);
     let mut bindings = serde_json::Map::new();
     let spawn = |name: &str| json!(["task::Spawn", { "task_name": name }]);
 
-    bindings.insert("cmd-shift-r".into(), spawn("iOS-Runner: Run"));
-    bindings.insert("cmd-shift-b".into(), spawn("iOS-Runner: Build"));
-    bindings.insert("cmd-shift-i".into(), spawn("iOS-Runner: Select Scheme & Device"));
-    bindings.insert("cmd-shift-e".into(), spawn("iOS-Runner: Setup Project"));
+    bindings.insert(
+        "cmd-shift-r".into(),
+        spawn(&global_keymap_task_label("run", lang).expect("run task")),
+    );
+    bindings.insert(
+        "cmd-shift-b".into(),
+        spawn(&global_keymap_task_label("build", lang).expect("build task")),
+    );
+    bindings.insert(
+        "cmd-shift-i".into(),
+        spawn(
+            &global_keymap_task_label("configure --run", lang).expect("configure task"),
+        ),
+    );
+    bindings.insert(
+        "cmd-shift-e".into(),
+        spawn(&global_keymap_task_label("ensure", lang).expect("ensure task")),
+    );
     bindings
 }
 
@@ -117,4 +135,12 @@ pub fn install_global_zed_keymap() -> Result<PathBuf> {
     let text = serde_json::to_string_pretty(&entries).context("serialize keymap")?;
     std::fs::write(&path, text).context("write keymap.json")?;
     Ok(path)
+}
+
+/// Workspace keymap entry for the Zed extension WASM bundle.
+pub fn embedded_keymap_entry() -> Value {
+    json!({
+        "context": "Workspace",
+        "bindings": Value::Object(default_ios_runner_bindings()),
+    })
 }

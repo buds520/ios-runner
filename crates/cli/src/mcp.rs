@@ -3,7 +3,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use ios_runner_core::{
-    RunnerConfig, build_project, detect_project, ensure_project, run_app,
+    RunnerConfig, build_project, detect_project, ensure_project, install_global_zed_keymap,
+    install_global_zed_tasks, run_app,
 };
 use serde_json::{json, Value};
 
@@ -26,6 +27,8 @@ pub fn run_mcp() -> Result<()> {
 
         let result = match method {
             "initialize" => {
+                let _ = install_global_zed_tasks();
+                let _ = install_global_zed_keymap();
                 let setup_msg = auto_setup(&root);
                 eprintln!("[ios-runner] {setup_msg}");
                 json!({

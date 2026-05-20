@@ -16,52 +16,128 @@ pub enum TaskInstallTarget {
     Project,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct TaskDef {
+    pub subcommand: &'static str,
+    pub target: TaskInstallTarget,
+    pub label_zh: &'static str,
+    pub label_en: &'static str,
+}
+
 /// Single source of truth for Zed task labels and CLI subcommands.
-pub const TASK_DEFS: &[(&str, &str, TaskInstallTarget)] = &[
-    ("Setup Project", "ensure", TaskInstallTarget::Global),
-    ("Run", "run", TaskInstallTarget::Global),
-    ("Run", "run", TaskInstallTarget::Project),
-    ("Select Scheme & Device", "configure --run", TaskInstallTarget::Global),
-    (
-        "Select Scheme & Device",
-        "configure --run",
-        TaskInstallTarget::Project,
-    ),
-    (
-        "Select Only (no run)",
-        "configure --no-run",
-        TaskInstallTarget::Project,
-    ),
-    ("Build", "build", TaskInstallTarget::Global),
-    ("Build", "build", TaskInstallTarget::Project),
-    (
-        "Build (verbose)",
-        "build --verbose",
-        TaskInstallTarget::Project,
-    ),
-    (
-        "Resolve Swift Packages",
-        "resolve-packages",
-        TaskInstallTarget::Project,
-    ),
+pub const TASK_DEFS: &[TaskDef] = &[
+    TaskDef {
+        subcommand: "ensure",
+        target: TaskInstallTarget::Global,
+        label_zh: "初始化项目",
+        label_en: "Initialize Project",
+    },
+    TaskDef {
+        subcommand: "run",
+        target: TaskInstallTarget::Global,
+        label_zh: "运行",
+        label_en: "Run",
+    },
+    TaskDef {
+        subcommand: "configure --run",
+        target: TaskInstallTarget::Global,
+        label_zh: "选择 Scheme 与设备",
+        label_en: "Select Scheme & Device",
+    },
+    TaskDef {
+        subcommand: "build",
+        target: TaskInstallTarget::Global,
+        label_zh: "编译",
+        label_en: "Build",
+    },
+    // Project-only extras (Run/Build/Configure live in global ~/.config/zed/tasks.json)
+    TaskDef {
+        subcommand: "configure --no-run",
+        target: TaskInstallTarget::Project,
+        label_zh: "仅选择（不运行）",
+        label_en: "Select Only (no run)",
+    },
+    TaskDef {
+        subcommand: "build --verbose",
+        target: TaskInstallTarget::Project,
+        label_zh: "编译（详细日志）",
+        label_en: "Build (verbose)",
+    },
+    TaskDef {
+        subcommand: "resolve-packages",
+        target: TaskInstallTarget::Project,
+        label_zh: "解析 Swift Packages",
+        label_en: "Resolve Swift Packages",
+    },
 ];
 
 pub fn task_label(suffix: &str) -> String {
     format!("{TASK_LABEL_PREFIX} {suffix}")
 }
 
+pub fn task_label_for_def(def: &TaskDef, lang: Lang) -> String {
+    let suffix = match lang {
+        Lang::ZhCn => def.label_zh,
+        Lang::En => def.label_en,
+    };
+    task_label(suffix)
+}
+
+/// Label for a global task used in `~/.config/zed/keymap.json` (`task::Spawn`).
+pub fn global_keymap_task_label(subcommand: &'static str, lang: Lang) -> Option<String> {
+    TASK_DEFS
+        .iter()
+        .find(|d| d.target == TaskInstallTarget::Global && d.subcommand == subcommand)
+        .map(|d| task_label_for_def(d, lang))
+}
+
+/// True when `tasks.json` contains a current iOS-Runner task set (any supported label).
+pub fn tasks_json_has_ios_runner_tasks(text: &str) -> bool {
+    if text.contains("curl -fsSL") || text.contains("$ir_bin") {
+        return false;
+    }
+    text.contains("iOS-Runner: Run")
+        || text.contains("iOS-Runner: 运行")
+        || text.contains("iOS-Runner: Initialize Project")
+        || text.contains("iOS-Runner: 初始化项目")
+        || text.contains("iOS-Runner: Setup Project")
+}
+
 pub fn shell_tasks_for_target(target: TaskInstallTarget, lang: Lang) -> Vec<serde_json::Value> {
     TASK_DEFS
         .iter()
-        .filter(|(_, _, t)| *t == target)
-        .map(|(suffix, sub, _)| shell_task_with_lang(&task_label(suffix), sub, lang))
+        .filter(|d| d.target == target)
+        .map(|d| shell_task_with_lang(&task_label_for_def(d, lang), d.subcommand, lang))
         .collect()
+}
+
+/// Whether `.zed/tasks.json` should be rewritten (missing, forced, or legacy duplicates).
+pub fn should_refresh_project_tasks(path: &Path) -> bool {
+    if !path.is_file() {
+        return true;
+    }
+    if crate::global_store::should_write_project_tasks() {
+        return true;
+    }
+    std::fs::read_to_string(path)
+        .map(|t| project_tasks_file_has_global_duplicates(&t))
+        .unwrap_or(false)
+}
+
+/// Labels that belong in global tasks only — if present in `.zed/tasks.json`, refresh project file.
+pub fn project_tasks_file_has_global_duplicates(text: &str) -> bool {
+    text.contains("\"label\": \"iOS-Runner: 运行\"")
+        || text.contains("\"label\": \"iOS-Runner: Run\"")
+        || text.contains("\"label\": \"iOS-Runner: 编译\"")
+        || text.contains("\"label\": \"iOS-Runner: Build\"")
+        || text.contains("\"label\": \"iOS-Runner: 初始化项目\"")
+        || text.contains("\"label\": \"iOS-Runner: 选择 Scheme 与设备\"")
 }
 
 fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::Value> {
     let mut map = serde_json::Map::new();
     map.insert("command".into(), json!("/bin/zsh"));
-    map.insert("args".into(), json!(["-lc", script]));
+    map.insert("args".into(), json!(["-fc", script]));
     map.insert("allow_concurrent_runs".into(), json!(false));
     map.insert("reveal".into(), json!("always"));
     map.insert("hide".into(), json!("never"));
@@ -73,7 +149,17 @@ fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::
     map
 }
 
-/// Run in Zed's terminal panel; auto-download CLI if needed (no cargo).
+fn task_body(subcommand: &str) -> String {
+    if subcommand == "ensure" {
+        format!("{CLI_PATH_SHELL} ensure")
+    } else {
+        format!(
+            "{CLI_PATH_SHELL} ensure --quiet && {CLI_PATH_SHELL} {subcommand}"
+        )
+    }
+}
+
+/// Run in Zed's terminal panel.
 #[allow(dead_code)]
 pub fn shell_task(label: &str, subcommand: &str) -> serde_json::Value {
     shell_task_with_lang(label, subcommand, Lang::ZhCn)
@@ -82,7 +168,8 @@ pub fn shell_task(label: &str, subcommand: &str) -> serde_json::Value {
 pub fn shell_task_with_lang(label: &str, subcommand: &str, lang: Lang) -> serde_json::Value {
     let preamble = zed_task_preamble(lang);
     let script = format!(
-        "{preamble}\nexport IOS_RUNNER_RAW_LOG=1\ncd \"${{ZED_WORKTREE_ROOT}}\" && {CLI_PATH_SHELL} ensure && {CLI_PATH_SHELL} {subcommand}"
+        "{preamble}\ncd \"${{ZED_WORKTREE_ROOT:.}}\" && {}",
+        task_body(subcommand)
     );
     let mut map = zed_task_shell_fields(script);
     map.insert("label".into(), json!(label));
@@ -97,7 +184,7 @@ pub fn write_zed_tasks(root: &Path, project: &DetectedProject) -> Result<()> {
 
     if project.has_podfile {
         let preamble = zed_task_preamble(lang);
-        let script = format!("{preamble}\ncd \"${{ZED_WORKTREE_ROOT}}\" && pod install");
+        let script = format!("{preamble}\ncd \"${{ZED_WORKTREE_ROOT:.}}\" && pod install");
         let mut map = zed_task_shell_fields(script);
         map.insert("label".into(), json!("iOS-Runner: Pod Install"));
         tasks.push(serde_json::Value::Object(map));
@@ -107,4 +194,36 @@ pub fn write_zed_tasks(root: &Path, project: &DetectedProject) -> Result<()> {
     let text = serde_json::to_string_pretty(&tasks).context("serialize tasks.json")?;
     std::fs::write(&path, text).with_context(|| format!("write {}", path.display()))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn init_task_label_zh() {
+        let def = &TASK_DEFS[0];
+        assert_eq!(
+            task_label_for_def(def, Lang::ZhCn),
+            "iOS-Runner: 初始化项目"
+        );
+    }
+
+    #[test]
+    fn detects_localized_tasks_json() {
+        assert!(tasks_json_has_ios_runner_tasks(
+            r#"[{"label":"iOS-Runner: 初始化项目"}]"#
+        ));
+    }
+
+    #[test]
+    fn project_tasks_exclude_global_duplicates() {
+        let project = shell_tasks_for_target(TaskInstallTarget::Project, Lang::ZhCn);
+        let labels: Vec<_> = project
+            .iter()
+            .filter_map(|t| t.get("label").and_then(|l| l.as_str()))
+            .collect();
+        assert!(!labels.contains(&"iOS-Runner: 运行"));
+        assert!(labels.iter().any(|l| l.contains("详细日志")));
+    }
 }

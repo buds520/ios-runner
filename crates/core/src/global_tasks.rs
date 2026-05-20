@@ -4,7 +4,9 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 
 use crate::bootstrap::lang_for_task_script;
-use crate::tasks::{shell_tasks_for_target, TaskInstallTarget, TASK_LABEL_PREFIX};
+use crate::tasks::{
+    shell_tasks_for_target, tasks_json_has_ios_runner_tasks, TaskInstallTarget, TASK_LABEL_PREFIX,
+};
 
 /// Detect legacy task scripts that curl-download CLI (superseded by extension bundle install).
 pub fn task_uses_legacy_download(task: &Value) -> bool {
@@ -16,12 +18,29 @@ pub fn task_uses_legacy_download(task: &Value) -> bool {
         .unwrap_or("");
     script.contains("正在下载命令行工具")
         || script.contains("Downloading CLI")
+        || script.contains("请在终端执行")
+        || script.contains("Run in a terminal")
         || script.contains("curl -fsSL")
+        || script.contains("尚未就绪")
+        || script.contains("not ready yet")
         || script.contains("$ir_bin")
         || script.contains("$IOS_RUNNER")
         || script.contains("if [ ! -x")
         || script.contains("${HOME}/.ios-runner")
         || script.contains("~/.ios-runner/bin/ios-runner")
+}
+
+/// True if global tasks include a current iOS-Runner Run task (not legacy curl scripts).
+pub fn global_zed_tasks_ready() -> Result<bool> {
+    let path = zed_config_dir()?.join("tasks.json");
+    if !path.is_file() {
+        return Ok(false);
+    }
+    let text = std::fs::read_to_string(&path).context("read global tasks.json")?;
+    if text.contains("curl -fsSL") || text.contains("$ir_bin") {
+        return Ok(false);
+    }
+    Ok(tasks_json_has_ios_runner_tasks(&text))
 }
 
 /// True if `~/.config/zed/tasks.json` contains outdated iOS-Runner task scripts.
@@ -39,6 +58,11 @@ pub fn global_zed_tasks_contain_legacy_scripts() -> Result<bool> {
 pub fn default_task_list() -> Vec<serde_json::Value> {
     let lang = lang_for_task_script(None);
     shell_tasks_for_target(TaskInstallTarget::Global, lang)
+}
+
+/// JSON array for the Zed extension WASM bundle (`src/embedded_global_tasks.json`).
+pub fn global_tasks_json_pretty() -> Result<String> {
+    serde_json::to_string_pretty(&default_task_list()).context("serialize global tasks")
 }
 
 pub fn zed_config_dir() -> Result<PathBuf> {

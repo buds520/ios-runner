@@ -16,10 +16,7 @@ xcuserdata/
 *.app
 *.dSYM
 
-# Local Zed project config (generated per project; keep demo as example)
+# Local Zed / iOS-Runner config (auto-created on first ensure in each project)
 **/.ios-runner.toml
-!XcodePilotDemo/.ios-runner.toml
 **/.xcode-pilot.toml
 **/.zed/
-!XcodePilotDemo/.zed/
-!XcodePilotDemo/.zed/**

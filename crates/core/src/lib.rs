@@ -22,11 +22,13 @@ pub use config::{ProjectKind, RunnerConfig};
 pub use bootstrap::INSTALL_DIR;
 pub use global_store::{config_file_path, load_global_file, save_global_file};
 pub use global_tasks::{
-    global_zed_tasks_contain_legacy_scripts, install_global_zed_tasks,
-    uninstall_global_zed_tasks, zed_config_dir,
+    global_tasks_json_pretty, global_zed_tasks_contain_legacy_scripts, global_zed_tasks_ready,
+    install_global_zed_tasks, uninstall_global_zed_tasks, zed_config_dir,
 };
 pub use uninstall::{UninstallOptions, UninstallReport, uninstall_ios_runner};
-pub use zed_keymap::{install_global_zed_keymap, uninstall_global_zed_keymap};
+pub use zed_keymap::{
+    embedded_keymap_entry, install_global_zed_keymap, uninstall_global_zed_keymap,
+};
 pub use configure::{configure_project, print_configure_success};
 pub use destination::{
     DestinationKind, RunDestination, is_placeholder_destination, is_simulator_destination,

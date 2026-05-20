@@ -33,7 +33,11 @@ echo "→ Bundle macOS CLI into extension bin/ (offline install)"
 chmod +x "$ROOT/scripts/bundle-cli-for-extension.sh"
 "$ROOT/scripts/bundle-cli-for-extension.sh" "$VERSION"
 
-git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md bin/ 2>/dev/null || true
+echo "→ Sync embedded global Zed tasks for WASM extension"
+chmod +x "$ROOT/scripts/sync-extension-embeds.sh"
+"$ROOT/scripts/sync-extension-embeds.sh"
+
+git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md bin/ src/embedded_global_tasks.json src/embedded_keymap_entry.json 2>/dev/null || true
 git add -u
 
 if git diff --staged --quiet && git rev-parse "$TAG" >/dev/null 2>&1; then

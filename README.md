@@ -8,26 +8,28 @@ Requires **macOS** and **Xcode**.
 
 ---
 
-## Install
+## Install (new users)
 
-### Option A — Zed extension (recommended)
+1. Zed → **Extensions** → **iOS Runner** → **Install**
+2. **Open Folder** → your iOS project (directory with `.xcodeproj` or `.xcworkspace`)
+3. **Cmd+Shift+R** to run
 
-1. Zed → **Extensions** → search **iOS-Runner** → **Install**
-2. Reload Zed once. The extension copies a bundled CLI to `~/.ios-runner/bin/ios-runner` (no Rust or `curl` needed).
-3. Install global tasks (once per Mac):
-
-```bash
-ios-runner install-zed-tasks
-```
-
-### Option B — CLI only (developers)
+If the task list is empty:
 
 ```bash
-cd crates && cargo install --path cli --locked
-ios-runner install-zed-tasks
+curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/install-cli.sh | bash
 ```
 
-Or download a binary from [Releases](https://github.com/buds520/ios-runner/releases).
+No need to clone this repository.
+
+### Developers (this repo)
+
+```bash
+git clone https://github.com/buds520/ios-runner.git
+cd ios-runner && ./scripts/install.sh
+```
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Sample app `XcodePilotDemo/` is for testing only.
 
 ---
 
@@ -65,10 +67,19 @@ Set `IOS_RUNNER_LOCAL_CONFIG=1` to also write `.ios-runner.toml` inside the proj
 ## Troubleshooting
 
 **Run panel shows “No matches”**  
-Run `ios-runner install-zed-tasks` once. New projects do not ship with `.zed/tasks.json` by default.
+Install the **iOS Runner** extension, **Open Folder** on your project, then:
 
-**Still see “Downloading CLI…” or old task scripts**  
-Reload the extension, run `ios-runner install-zed-tasks`, remove any legacy `.zed/tasks.json` in the project.
+```bash
+curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/install-cli.sh | bash
+```
+
+New projects do not ship with `.zed/tasks.json` — tasks come from global `~/.config/zed/tasks.json`.
+
+**Duplicate tasks in the spawn menu**  
+Delete stale `<project>/.zed/tasks.json` and run `ios-runner ensure --quiet`, or reinstall global tasks with `ios-runner install-zed-tasks`.
+
+**CLI not ready / old task scripts**  
+Re-run `install-cli.sh` above, or quit Zed (Cmd+Q) and reinstall the extension.
 
 **Invalid destination / xcodebuild exit 64**  
 Run `ios-runner configure --run` and pick a real simulator or device.
@@ -91,9 +102,9 @@ Disable the Zed extension manually in **Extensions**.
 
 ---
 
-## Demo project
+## Demo project (maintainers only)
 
-Minimal SwiftUI sample: [XcodePilotDemo/](XcodePilotDemo/)
+Minimal sample for testing: [XcodePilotDemo/](XcodePilotDemo/) — not the new-user onboarding path.
 
 ---
 
@@ -101,6 +112,7 @@ Minimal SwiftUI sample: [XcodePilotDemo/](XcodePilotDemo/)
 
 | Doc | Topic |
 |-----|--------|
+| [docs/NEW_USER.md](docs/NEW_USER.md) | New-user flow & troubleshooting |
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | Step-by-step first run |
 | [docs/ZED_UX.md](docs/ZED_UX.md) | Tasks, shortcuts, i18n |
 | [docs/PUBLISHING.md](docs/PUBLISHING.md) | Releases & Zed marketplace |

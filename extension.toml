@@ -1,10 +1,10 @@
 id = "ios-runner"
-name = "iOS-Runner"
-version = "0.2.3"
+name = "iOS Runner"
+version = "0.2.5"
 schema_version = 1
 authors = ["buds520"]
 description = "Build and run iOS Xcode projects in Zed (xcodebuild). Bundled ios-runner CLI installs on first load — no cargo or manual download. Requires macOS and Xcode."
 repository = "https://github.com/buds520/ios-runner"
 
 [context_servers.ios-runner]
-name = "iOS-Runner"
+name = "iOS Runner"

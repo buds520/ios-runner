@@ -8,7 +8,6 @@ use crate::destination::validate_xcodebuild_destination;
 use crate::xcodebuild::default_simulator_destination;
 use crate::global_store::{
     canonical_root, config_file_path, load_config, load_global_file, save_config,
-    should_write_project_tasks,
 };
 use crate::tasks::write_zed_tasks;
 
@@ -34,9 +33,12 @@ pub fn ensure_project(root: &Path) -> Result<EnsureReport> {
         wrote_config = true;
     }
 
+    // Project-only extras in `.zed/tasks.json` (Pod Install, verbose build, …). Common tasks use global tasks.
     let mut wrote_tasks = false;
-    if should_write_project_tasks() {
-        if !root.join(".zed/tasks.json").is_file() {
+    let project_tasks = root.join(".zed/tasks.json");
+    let needs_project_tasks = crate::tasks::should_refresh_project_tasks(&project_tasks);
+    if needs_project_tasks {
+        if !project_tasks.is_file() {
             wrote_tasks = true;
         }
         write_zed_tasks(root, &project)?;

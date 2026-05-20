@@ -7,7 +7,7 @@ use crate::destination::{DestinationKind, list_run_destinations};
 use crate::detect::detect_project;
 use crate::locale::t;
 use crate::prompt::{confirm, pick_one};
-use crate::global_store::{load_global_file, should_write_project_tasks};
+use crate::global_store::{load_global_file};
 use crate::tasks::write_zed_tasks;
 use crate::xcodebuild::list_schemes;
 
@@ -86,7 +86,7 @@ pub fn configure_project(root: &Path, run_after: Option<bool>) -> Result<RunnerC
 
     let global_path = config.save(root)?;
     config.apply_locale();
-    if should_write_project_tasks() {
+    if crate::tasks::should_refresh_project_tasks(&root.join(".zed/tasks.json")) {
         write_zed_tasks(root, &project)?;
     }
     print_configure_success(&config, &global_path);

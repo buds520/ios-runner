@@ -1,6 +1,9 @@
 //! Shell snippet prepended to Zed tasks.
 //!
 //! Zed pre-expands `$VAR` before zsh runs. Use `$HOME` (env) in quoted paths, not `${HOME}`.
+//!
+//! CLI install runs when the Zed extension loads (`Extension::new` on install / app restart).
+//! Tasks assume `~/.ios-runner/bin/ios-runner` already exists.
 
 use crate::locale::Lang;
 
@@ -10,28 +13,40 @@ pub const INSTALL_DIR: &str = ".ios-runner/bin";
 pub const CLI_PATH_SHELL: &str = "\"$HOME/.ios-runner/bin/ios-runner\"";
 
 const PREAMBLE_ZH: &str = r#"
-test -x "$HOME/.ios-runner/bin/ios-runner" || { command -v ios-runner >/dev/null 2>&1 && ios-runner install-self; }
-test -x "$HOME/.ios-runner/bin/ios-runner" || {
-  echo "iOS-Runner: 未找到命令行工具。"
-  echo "请在终端执行: ios-runner install-self"
-  echo "然后重新加载 Zed 窗口。"
-  exit 1
-}
 export PATH="$HOME/.ios-runner/bin:$PATH"
+IR="$HOME/.ios-runner/bin/ios-runner"
+if ! test -x "$IR"; then
+  echo ""
+  echo "  iOS Runner 尚未就绪。"
+  echo ""
+  echo "  在 Zed 里任选一种方式（无需终端）："
+  echo "    · Cmd+Q 完全退出 Zed，再重新打开"
+  echo "    · 或 Cmd+Shift+P → 搜 extensions → 打开扩展页 → 重装 iOS Runner"
+  echo ""
+  echo "  扩展会在加载时自动安装运行环境。"
+  echo ""
+  exit 1
+fi
 "#;
 
 const PREAMBLE_EN: &str = r#"
-test -x "$HOME/.ios-runner/bin/ios-runner" || { command -v ios-runner >/dev/null 2>&1 && ios-runner install-self; }
-test -x "$HOME/.ios-runner/bin/ios-runner" || {
-  echo "iOS-Runner: CLI not found."
-  echo "Run in a terminal: ios-runner install-self"
-  echo "Then reload the Zed window."
-  exit 1
-}
 export PATH="$HOME/.ios-runner/bin:$PATH"
+IR="$HOME/.ios-runner/bin/ios-runner"
+if ! test -x "$IR"; then
+  echo ""
+  echo "  iOS Runner is not ready yet."
+  echo ""
+  echo "  In Zed (no terminal):"
+  echo "    · Cmd+Q to quit Zed completely, then reopen"
+  echo "    · Or Cmd+Shift+P → extensions → reinstall iOS Runner"
+  echo ""
+  echo "  The extension installs everything when it loads."
+  echo ""
+  exit 1
+fi
 "#;
 
-/// Prepended to Zed tasks.
+/// Prepended to Zed tasks (PATH + extension-ready check only).
 pub fn zed_task_preamble(lang: Lang) -> String {
     match lang {
         Lang::ZhCn => PREAMBLE_ZH.trim().to_string(),

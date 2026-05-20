@@ -19,7 +19,7 @@
 
 ### ① 安装 Zed 扩展
 
-1. Zed → **Extensions** → 搜索 **iOS-Runner** → **Install**
+1. Zed → **Extensions** → 搜索 **iOS Runner** → **Install**
 2. **重载扩展**（扩展会把 CLI 装到 `~/.ios-runner/bin/`）
 
 ### ② 写入全局任务（整台 Mac 一次）

@@ -1,0 +1,29 @@
+{
+  "bindings": {
+    "cmd-shift-b": [
+      "task::Spawn",
+      {
+        "task_name": "iOS-Runner: 编译"
+      }
+    ],
+    "cmd-shift-e": [
+      "task::Spawn",
+      {
+        "task_name": "iOS-Runner: 初始化项目"
+      }
+    ],
+    "cmd-shift-i": [
+      "task::Spawn",
+      {
+        "task_name": "iOS-Runner: 选择 Scheme 与设备"
+      }
+    ],
+    "cmd-shift-r": [
+      "task::Spawn",
+      {
+        "task_name": "iOS-Runner: 运行"
+      }
+    ]
+  },
+  "context": "Workspace"
+}

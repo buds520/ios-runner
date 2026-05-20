@@ -1,9 +1,0 @@
-kind = "project"
-path = "XcodePilotDemo.xcodeproj"
-scheme = "XcodePilotDemo"
-configuration = "Debug"
-destination = "platform=iOS,id=00008130-001A68141A09001C,name=iPhone15PM"
-derived_data = ".ios-runner/DerivedData"
-xcbeautify = true
-resolve_packages_before_build = true
-bring_simulator_to_foreground = false

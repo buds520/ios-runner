@@ -5,11 +5,11 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use ios_runner_core::{
-    RunnerConfig, build_project, configure_project, detect_project, ensure_project,
-    global_zed_tasks_contain_legacy_scripts, init_locale, install_global_zed_keymap,
-    install_global_zed_tasks, is_placeholder_destination, list_run_destinations, list_schemes,
-    list_simulators, resolve_packages, run_app, t, tf, uninstall_ios_runner, zed_config_dir,
-    UninstallOptions,
+    RunnerConfig, build_project, configure_project, detect_project, embedded_keymap_entry,
+    ensure_project, global_tasks_json_pretty, global_zed_tasks_contain_legacy_scripts,
+    init_locale, install_global_zed_keymap, install_global_zed_tasks, is_placeholder_destination,
+    list_run_destinations, list_schemes, list_simulators, resolve_packages, run_app, t, tf,
+    uninstall_ios_runner, zed_config_dir, UninstallOptions,
 };
 
 mod mcp;
@@ -30,7 +30,11 @@ enum Commands {
         #[arg(long, short)]
         pick: bool,
     },
-    Ensure,
+    Ensure {
+        /// No output when project is already configured
+        #[arg(short, long)]
+        quiet: bool,
+    },
     /// Interactive scheme + device; saves config (prompts to run unless flags set)
     Configure {
         /// After saving, build and launch immediately
@@ -55,6 +59,10 @@ enum Commands {
     InstallSelf,
     /// Add iOS-Runner tasks to ~/.config/zed/tasks.json (all projects)
     InstallZedTasks,
+    /// Print global Zed tasks JSON (for extension embed; stdout only)
+    EmitGlobalTasksJson,
+    /// Print global keymap entry JSON (for extension embed; stdout only)
+    EmitEmbeddedKeymapJson,
     /// Remove CLI, Zed tasks/keymap, and global config from this machine
     Uninstall {
         /// Keep ~/.config/ios-runner/ (scheme/device settings)
@@ -78,11 +86,22 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Doctor => cmd_doctor(&root),
         Commands::Init { pick } => cmd_init(&root, pick),
-        Commands::Ensure => cmd_init_ensure(&root),
+        Commands::Ensure { quiet } => cmd_init_ensure(&root, quiet),
         Commands::Configure { run, no_run } => cmd_configure(&root, run, no_run),
         Commands::Mcp => mcp::run_mcp(),
         Commands::InstallSelf => cmd_install_self(),
         Commands::InstallZedTasks => cmd_install_zed_tasks(),
+        Commands::EmitGlobalTasksJson => {
+            print!("{}", global_tasks_json_pretty()?);
+            Ok(())
+        }
+        Commands::EmitEmbeddedKeymapJson => {
+            print!(
+                "{}",
+                serde_json::to_string_pretty(&embedded_keymap_entry()).context("serialize keymap")?
+            );
+            Ok(())
+        }
         Commands::Uninstall {
             keep_config,
             purge_derived_data,
@@ -351,10 +370,13 @@ fn cmd_init(root: &Path, pick: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_init_ensure(root: &Path) -> Result<()> {
+fn cmd_init_ensure(root: &Path, quiet: bool) -> Result<()> {
     let report = ensure_project(root)?;
     if let Ok(config) = RunnerConfig::load(root) {
         config.apply_locale();
+    }
+    if quiet && !report.wrote_config && !report.wrote_tasks {
+        return Ok(());
     }
     if report.wrote_config || report.wrote_tasks {
         eprintln!(

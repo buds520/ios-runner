@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-05-20
+
+### Added
+- `scripts/install-cli.sh` — install CLI + global Zed tasks without cloning the repo
+- `scripts/install.sh` — install from local clone (Release → bundled `bin/` → cargo fallback)
+- `scripts/simulate-fresh-install.sh` — reset user state for new-user UX testing
+- `docs/NEW_USER.md` — new-user flow (own iOS project, no Demo shortcut)
+- Extension embeds `src/embedded_global_tasks.json` + `embedded_keymap_entry.json` (bootstrap without CLI)
+- CLI: `ensure --quiet`, `emit-global-tasks-json`, `emit-embedded-keymap-json`
+- Localized global task labels: **初始化项目** / **运行** / **编译** / **选择 Scheme 与设备**
+
+### Fixed
+- Empty Run panel: embedded global tasks written on extension load; `${ZED_WORKTREE_ROOT:.}` prevents Zed filtering tasks
+- Duplicate tasks in spawn menu: project `.zed/tasks.json` only holds extras (Pod Install, verbose build, …); globals in `~/.config/zed`
+- Verbose terminal noise: removed default `IOS_RUNNER_RAW_LOG=1`; `zsh -fc` skips `.zshrc` env dump; `ensure --quiet` on run/build
+- Bootstrap error messages: no fake「Reload Window」; use Cmd+Q / reinstall extension
+- Extension bootstrap continues when CLI install fails (tasks/keymap still written)
+
+### Changed
+- README focused on new users with their own iOS project; `XcodePilotDemo/` marked maintainers-only
+- Removed committed `XcodePilotDemo/.ios-runner.toml`
+- Zed task schema bumps through `TASKS_SCHEMA` in extension
+
 ## [0.2.3] - 2026-05-20
 
 ### Added
@@ -28,43 +51,20 @@
 - Invalid `destination` for xcodebuild (`key=value` format, reject placeholder simulators)
 - `ensure` replaces invalid saved destination with a real default simulator
 - Simulator log stream: `exec` `simctl launch --console-pty` so Ctrl+C stops the log (Zed terminal)
-- Zed tasks: no `curl` download; use `$HOME` / quoted paths (Zed variable expansion safe)
-- Boot simulator when already Booted no longer fails
 
 ### Changed
-- Extension bootstrap installs bundled CLI once per version; GitHub download only as fallback
-- Zed task schema `tasks-v6-quoted-home`; removed legacy project `.zed/tasks.json` from demo
+- Global config default (not per-repo `.ios-runner.toml`)
+- Zed task schema v6+; extension bootstrap once per version
 
-## [0.2.1] - 2026-05-19
-
-### Fixed
-- Physical device `showBuildSettings`: use `iphoneos` SDK instead of hardcoded simulator SDK
-- Default simulator destination: prefer `simctl` list; no silent fallback to `iPhone 16`
-- Global config `config.toml`: file lock on read-modify-write (parallel Zed tasks)
-- Stable DerivedData cache folder names (FNV-1a instead of `DefaultHasher`)
-- Swift Package resolve failures are warned instead of silently ignored
-- Zed task CLI download pinned to release version (not `latest`)
-- Extension bootstrap runs once per version; clearer errors
-- Tighter devicectl trust/lock hints; `xcbeautify` default aligned with global config
-
-## [0.2.0] - 2026-05-20
+## [0.2.1] - 2026-05-18
 
 ### Added
-- Global config at `~/.config/ios-runner/config.toml` (default: no project-local `.ios-runner.toml`)
-- Global Zed tasks + keymaps (`install-zed-tasks`)
-- Terminal UI language: `language` / `IOS_RUNNER_LANG` (zh-CN / en)
-- Device lock / trust / Developer Mode hints for physical devices
-- Extension bootstrap: download CLI + install global tasks on load
+- Global config store (`~/.config/ios-runner/config.toml`)
+- Zed global tasks + keymaps (`install-zed-tasks`)
 
 ### Changed
-- DerivedData under `~/.ios-runner/DerivedData/` instead of inside projects
-- Zed tasks hide misleading `Command: /bin/zsh` summary (`show_command: false`)
-- Fix Zed task variable clash (`ir_bin` instead of `$IOS_RUNNER`)
+- Extension bootstrap: download CLI + install global tasks on load
 
-### Fixed
-- GitHub Release workflow builds from `crates/` directory
-- CocoaPods workspace detection and simulator destinations
+## [0.2.0] - 2026-05-17
 
-## [0.1.0] - 2026-05-19
-
-- Initial public release: CLI, Zed extension, MCP, Build/Run tasks
+Initial public release.
