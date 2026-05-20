@@ -12,7 +12,7 @@
     "save": "all",
     "show_command": false,
     "show_summary": false,
-    "use_new_terminal": true
+    "use_new_terminal": false
   },
   {
     "allow_concurrent_runs": false,
@@ -27,7 +27,7 @@
     "save": "all",
     "show_command": false,
     "show_summary": false,
-    "use_new_terminal": true
+    "use_new_terminal": false
   },
   {
     "allow_concurrent_runs": false,
@@ -42,7 +42,7 @@
     "save": "all",
     "show_command": false,
     "show_summary": false,
-    "use_new_terminal": true
+    "use_new_terminal": false
   },
   {
     "allow_concurrent_runs": false,
@@ -57,6 +57,6 @@
     "save": "all",
     "show_command": false,
     "show_summary": false,
-    "use_new_terminal": true
+    "use_new_terminal": false
   }
 ]

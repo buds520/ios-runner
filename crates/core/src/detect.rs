@@ -87,13 +87,48 @@ fn find_xcodeproj(root: &Path) -> Result<Option<PathBuf>> {
     find_xcode_file(root, "xcodeproj", |_| true)
 }
 
+/// Schemes tied to this workspace/project name (drops unrelated Pods deps like AFNetworking).
+pub fn filter_schemes_for_project(schemes: &[String], project: &DetectedProject) -> Vec<String> {
+    let stem = project
+        .path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+    let related: Vec<String> = schemes
+        .iter()
+        .filter(|s| !s.starts_with("Pods-"))
+        .filter(|s| *s == stem || s.starts_with(stem))
+        .cloned()
+        .collect();
+    if related.is_empty() {
+        schemes
+            .iter()
+            .filter(|s| !s.starts_with("Pods-"))
+            .cloned()
+            .collect()
+    } else {
+        related
+    }
+}
+
+pub fn pick_default_scheme(schemes: &[String], project: &DetectedProject) -> Option<String> {
+    let filtered = filter_schemes_for_project(schemes, project);
+    let stem = project.path.file_stem()?.to_str()?;
+    if filtered.iter().any(|s| s == stem) {
+        return Some(stem.to_string());
+    }
+    filtered
+        .into_iter()
+        .find(|s| !s.ends_with("Tests") && !s.ends_with("UITests"))
+        .or_else(|| filter_schemes_for_project(schemes, project).into_iter().next())
+}
+
 pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerConfig> {
     let schemes = list_schemes(root, project)?;
-    let scheme = pick_default_scheme(&schemes)
-        .with_context(|| format!("no schemes in {}", project.path.display()))?
-        .to_string();
+    let scheme = pick_default_scheme(&schemes, project)
+        .with_context(|| format!("no schemes in {}", project.path.display()))?;
 
-    let destination = default_simulator_destination(root, project, &scheme)?;
+    let destination = default_preferred_destination(root, project, &scheme)?;
 
     let rel = project
         .path
@@ -123,12 +158,20 @@ pub fn create_config(root: &Path, project: &DetectedProject) -> Result<RunnerCon
     })
 }
 
-fn pick_default_scheme(schemes: &[String]) -> Option<&str> {
-    schemes
+/// Prefer connected device, else iPhone simulator.
+pub fn default_preferred_destination(
+    root: &Path,
+    project: &DetectedProject,
+    scheme: &str,
+) -> Result<String> {
+    let destinations = crate::destination::list_run_destinations(root, project, scheme)?;
+    if let Some(d) = destinations
         .iter()
-        .find(|s| !s.starts_with("Pods-"))
-        .or_else(|| schemes.first())
-        .map(|s| s.as_str())
+        .find(|d| d.kind == crate::destination::DestinationKind::Device)
+    {
+        return Ok(d.destination.clone());
+    }
+    default_simulator_destination(root, project, scheme)
 }
 
 #[cfg(test)]
@@ -170,6 +213,48 @@ mod tests {
         let found = find_workspace(&root, false).unwrap().expect("workspace");
         assert!(found.ends_with("App.xcworkspace"));
 
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filter_schemes_keeps_project_prefix() {
+        let root = temp_detect_root("scheme-filter");
+        let ws = root.join("Earphones.xcworkspace");
+        fs::create_dir_all(&ws).unwrap();
+        let project = DetectedProject {
+            kind: ProjectKind::Workspace,
+            path: ws,
+            has_podfile: false,
+            has_package_swift: false,
+        };
+        let schemes = vec![
+            "AFNetworking".into(),
+            "Earphones".into(),
+            "EarphonesWidgetExtension".into(),
+        ];
+        let filtered = filter_schemes_for_project(&schemes, &project);
+        assert!(filtered.contains(&"Earphones".to_string()));
+        assert!(filtered.contains(&"EarphonesWidgetExtension".to_string()));
+        assert!(!filtered.contains(&"AFNetworking".to_string()));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn pick_default_scheme_prefers_workspace_name() {
+        let root = temp_detect_root("scheme-default");
+        let ws = root.join("App.xcworkspace");
+        fs::create_dir_all(&ws).unwrap();
+        let project = DetectedProject {
+            kind: ProjectKind::Workspace,
+            path: ws,
+            has_podfile: false,
+            has_package_swift: false,
+        };
+        let schemes = vec!["AppTests".into(), "App".into(), "Pods-App".into()];
+        assert_eq!(
+            pick_default_scheme(&schemes, &project).as_deref(),
+            Some("App")
+        );
         let _ = fs::remove_dir_all(&root);
     }
 }

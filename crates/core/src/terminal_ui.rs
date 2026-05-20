@@ -1,5 +1,7 @@
 use std::io::{self, IsTerminal, Write};
 
+use crate::config::{ProjectKind, RunnerConfig};
+
 fn use_color() -> bool {
     std::env::var("NO_COLOR").is_err()
         && std::env::var("IOS_RUNNER_NO_COLOR").is_err()
@@ -36,6 +38,37 @@ pub fn success(msg: &str) {
 
 pub fn warn(msg: &str) {
     let _ = writeln!(io::stderr(), "{}", style(msg, "33"));
+}
+
+/// Print scheme, destination, and project path before build/run.
+pub fn print_project_context(config: &RunnerConfig) {
+    let kind = match config.kind {
+        ProjectKind::Workspace => crate::locale::t("Workspace", "Workspace"),
+        ProjectKind::Project => crate::locale::t("Project", "Project"),
+    };
+    let pm = if config.path.contains("xcworkspace") {
+        crate::locale::t("CocoaPods / Workspace", "CocoaPods / Workspace")
+    } else {
+        crate::locale::t("Xcode Project", "Xcode Project")
+    };
+    section(
+        crate::locale::t("当前工程", "Current project"),
+        None,
+    );
+    info(&format!("{} : {}", crate::locale::t("类型", "Kind"), kind));
+    info(&format!("{} : {}", crate::locale::t("路径", "Path"), config.path));
+    info(&format!(
+        "{} : {}",
+        crate::locale::t("包管理", "Package manager"),
+        pm
+    ));
+    info(&format!("Scheme : {}", config.scheme));
+    info(&format!("Configuration : {}", config.configuration));
+    info(&format!(
+        "{} : {}",
+        crate::locale::t("运行目标", "Destination"),
+        config.device_summary()
+    ));
 }
 
 /// Warn once when user enabled xcbeautify in config but the binary is missing.

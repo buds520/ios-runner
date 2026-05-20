@@ -2,12 +2,29 @@ use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 
 use crate::config::RunnerConfig;
+use crate::detect::{DetectedProject, detect_project};
+
+const CONFIG_CACHE_TTL: Duration = Duration::from_secs(5);
+
+static CONFIG_CACHE: OnceLock<Mutex<Option<(Instant, GlobalConfigFile)>>> = OnceLock::new();
+
+fn config_cache() -> &'static Mutex<Option<(Instant, GlobalConfigFile)>> {
+    CONFIG_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+fn invalidate_config_cache() {
+    if let Ok(mut guard) = config_cache().lock() {
+        *guard = None;
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GlobalDefaults {
@@ -73,6 +90,25 @@ pub fn canonical_root(root: &Path) -> PathBuf {
     root.canonicalize().unwrap_or_else(|_| root.to_path_buf())
 }
 
+/// Stable config key: canonical `.xcworkspace` / `.xcodeproj` path (shared across Open Folder parents).
+pub fn project_config_key(project_path: &Path) -> String {
+    project_path
+        .canonicalize()
+        .unwrap_or_else(|_| project_path.to_path_buf())
+        .to_string_lossy()
+        .to_string()
+}
+
+/// Lookup keys: project file path first, then legacy worktree root.
+pub fn config_lookup_keys(root: &Path, project: &DetectedProject) -> Vec<String> {
+    let mut keys = vec![project_config_key(&project.path)];
+    let legacy = canonical_root(root).to_string_lossy().to_string();
+    if !keys.iter().any(|k| k == &legacy) {
+        keys.push(legacy);
+    }
+    keys
+}
+
 /// Stable cache folder name under `~/.ios-runner/DerivedData/`.
 pub fn project_cache_id(root: &Path) -> String {
     let path = canonical_root(root);
@@ -92,13 +128,27 @@ pub fn global_derived_data_path(root: &Path) -> Result<PathBuf> {
 }
 
 pub fn load_global_file() -> Result<GlobalConfigFile> {
-    let path = config_file_path()?;
-    if !path.is_file() {
-        return Ok(GlobalConfigFile::default());
+    if let Ok(guard) = config_cache().lock() {
+        if let Some((at, file)) = guard.as_ref() {
+            if at.elapsed() < CONFIG_CACHE_TTL {
+                return Ok(file.clone());
+            }
+        }
     }
-    let text = std::fs::read_to_string(&path).context("read global config")?;
-    let mut file: GlobalConfigFile = toml::from_str(&text).context("parse global config")?;
-    normalize_defaults(&mut file.defaults);
+
+    let path = config_file_path()?;
+    let file = if !path.is_file() {
+        GlobalConfigFile::default()
+    } else {
+        let text = std::fs::read_to_string(&path).context("read global config")?;
+        let mut file: GlobalConfigFile = toml::from_str(&text).context("parse global config")?;
+        normalize_defaults(&mut file.defaults);
+        file
+    };
+
+    if let Ok(mut guard) = config_cache().lock() {
+        *guard = Some((Instant::now(), file.clone()));
+    }
     Ok(file)
 }
 
@@ -153,6 +203,7 @@ where
     op(&mut global)?;
     write_locked(&mut file, &global)?;
     file.unlock().context("unlock global config")?;
+    invalidate_config_cache();
     Ok(path)
 }
 
@@ -176,11 +227,16 @@ fn finish_loaded_config(mut config: RunnerConfig, root: &Path, defaults: &Global
 
 /// Load config: global store first, then legacy project `.ios-runner.toml`.
 pub fn load_config(root: &Path) -> Result<RunnerConfig> {
-    let key = canonical_root(root).to_string_lossy().to_string();
-    let file = load_global_file()?;
+    let project = detect_project(root)?;
+    load_config_for_project(root, &project)
+}
 
-    if let Some(config) = file.projects.get(&key).cloned() {
-        return finish_loaded_config(config, root, &file.defaults);
+pub fn load_config_for_project(root: &Path, project: &DetectedProject) -> Result<RunnerConfig> {
+    let file = load_global_file()?;
+    for key in config_lookup_keys(root, project) {
+        if let Some(config) = file.projects.get(&key).cloned() {
+            return finish_loaded_config(config, root, &file.defaults);
+        }
     }
 
     if let Ok(local) = RunnerConfig::load_local(root) {
@@ -198,7 +254,16 @@ pub fn load_config(root: &Path) -> Result<RunnerConfig> {
 
 /// Save to `~/.config/ios-runner/config.toml` only (does not touch the project tree).
 pub fn save_config(root: &Path, config: &RunnerConfig) -> Result<PathBuf> {
-    let key = canonical_root(root).to_string_lossy().to_string();
+    let project = detect_project(root)?;
+    save_config_for_project(root, &project, config)
+}
+
+pub fn save_config_for_project(
+    root: &Path,
+    project: &DetectedProject,
+    config: &RunnerConfig,
+) -> Result<PathBuf> {
+    let key = project_config_key(&project.path);
     let mut stored = config.clone();
     stored.normalize();
     stored.derived_data = global_derived_data_path(root)?

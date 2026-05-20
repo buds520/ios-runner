@@ -20,14 +20,15 @@ Zed 收录后：
 ### 方式二：开发扩展（未上架 / 要用最新源码）
 
 ```bash
-git clone https://github.com/buds520/ios-runner.git
+curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/install-dev.sh | bash
 ```
 
-1. Zed → **Extensions** → **Install Dev Extension** → 选 **仓库根目录**（含 `extension.toml`，不要选 `XcodePilotDemo`）
+或手动 `git clone` 后执行 `./install-dev.sh`。
+
+1. Zed → **Extensions** → **Install Dev Extension** → 选 **仓库根目录**（含 `extension.toml`）
 2. **File → Open Folder** → 你的工程
 
-可选：本机编译 CLI — `cd ios-runner/crates && cargo install --path cli --locked`  
-或执行 `./scripts/install.sh`（见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)）。
+扩展加载时若 CLI 未就绪，会提示上述命令。也可 `./scripts/install.sh`（见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)）。
 
 ---
 
@@ -54,6 +55,8 @@ curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/ins
 ```
 
 3. **Cmd+Q** 退出 Zed 后重新打开，或重装扩展。
+
+**可选：** `ios-runner switch` 快速切换模拟器/真机；设置 `IOS_RUNNER_SKIP_IF_FRESH=1` 可在源码未改时跳过编译。
 
 ---
 

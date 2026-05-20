@@ -38,7 +38,7 @@
 
 | 路径 | 说明 |
 |------|------|
-| `~/.config/ios-runner/config.toml` | 按工程根路径存 scheme、destination 等 |
+| `~/.config/ios-runner/config.toml` | 按 `.xcworkspace`/`.xcodeproj` 路径存 scheme、destination（不同 Open Folder 父目录共享） |
 | `~/.ios-runner/bin/ios-runner` | 扩展或 `install-self` 安装的 CLI |
 | `~/.config/zed/tasks.json` | `install-zed-tasks` 写入的全局任务 |
 | `~/.config/zed/keymap.json` | Cmd+Shift+E/I/R/B |
@@ -61,7 +61,13 @@ ios-runner configure --run
 
 ### Zed Dev Extension
 
+```bash
+./install-dev.sh   # 或 curl -fsSL .../install-dev.sh | bash
+```
+
 见 [ZED_DEV_EXTENSION.md](ZED_DEV_EXTENSION.md)。选择**仓库根目录**（含 `extension.toml`），不要选 `XcodePilotDemo`。
+
+CLI 补充命令：`ios-runner switch`（切换设备）、`IOS_RUNNER_SKIP_IF_FRESH=1`（可选增量跳过编译）。
 
 ### 发版
 

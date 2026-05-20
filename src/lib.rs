@@ -10,7 +10,7 @@ struct IosRunnerExtension;
 
 const EXTENSION_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Bump when Zed task scripts change (forces `install-zed-tasks` even if extension version unchanged).
-const TASKS_SCHEMA: &str = "tasks-v15-no-duplicate-project-tasks";
+const TASKS_SCHEMA: &str = "tasks-v16-in-panel-terminal";
 const TASK_LABEL_PREFIX: &str = "iOS-Runner:";
 const EMBEDDED_GLOBAL_TASKS: &str = include_str!("embedded_global_tasks.json");
 const EMBEDDED_KEYMAP_ENTRY: &str = include_str!("embedded_keymap_entry.json");
@@ -330,6 +330,7 @@ fn bootstrap_install() -> Result<(), String> {
         }
         Err(e) => {
             eprintln!("[ios-runner] CLI install deferred: {e}");
+            print_dev_extension_hint();
         }
     }
 
@@ -341,6 +342,29 @@ fn bootstrap_install() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn print_dev_extension_hint() {
+    eprintln!(
+        r"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  iOS-Runner Dev Extension
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dev Extension 需要单独安装 CLI，任务面板才会完整可用。
+
+【方式一】一键安装（推荐）
+  curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/install-dev.sh | bash
+
+【方式二】手动
+  cd /path/to/ios-runner/crates && cargo build -p ios-runner-cli --release
+  cp target/release/ios-runner ~/.ios-runner/bin/
+  ios-runner install-zed-tasks
+
+安装后 Cmd+Q 退出 Zed 并重新打开。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"
+    );
 }
 
 fn ensure_cli_binary() -> Result<String, String> {

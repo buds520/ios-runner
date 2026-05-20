@@ -4,9 +4,9 @@ use anyhow::{Result, bail};
 
 use crate::config::RunnerConfig;
 use crate::destination::{DestinationKind, list_run_destinations};
-use crate::detect::detect_project;
+use crate::detect::{detect_project, filter_schemes_for_project, pick_default_scheme};
 use crate::locale::t;
-use crate::prompt::{confirm, pick_one};
+use crate::prompt::{confirm, is_interactive_tty, pick_one_with_default};
 use crate::global_store::{load_global_file};
 use crate::tasks::write_zed_tasks;
 use crate::xcodebuild::list_schemes;
@@ -16,18 +16,23 @@ pub fn configure_project(root: &Path, run_after: Option<bool>) -> Result<RunnerC
     let project = detect_project(root)?;
 
     let schemes = list_schemes(root, &project)?;
-    let scheme_labels: Vec<String> = schemes
+    let scheme_labels = filter_schemes_for_project(&schemes, &project);
+    let default_scheme = pick_default_scheme(&schemes, &project)
+        .unwrap_or_else(|| scheme_labels.first().cloned().unwrap_or_default());
+    let default_scheme_idx = scheme_labels
         .iter()
-        .filter(|s| !s.starts_with("Pods-"))
-        .cloned()
-        .collect();
-    let scheme_labels = if scheme_labels.is_empty() {
-        schemes
-    } else {
-        scheme_labels
-    };
+        .position(|s| s == &default_scheme)
+        .unwrap_or(0);
 
-    let scheme_idx = pick_one(t("选择 Scheme", "Select scheme"), &scheme_labels)?;
+    let scheme_idx = if is_interactive_tty() {
+        pick_one_with_default(
+            t("选择 Scheme", "Select scheme"),
+            &scheme_labels,
+            default_scheme_idx,
+        )?
+    } else {
+        default_scheme_idx
+    };
     let scheme = scheme_labels[scheme_idx].clone();
 
     let destinations = list_run_destinations(root, &project, &scheme)?;
@@ -42,13 +47,22 @@ pub fn configure_project(root: &Path, run_after: Option<bool>) -> Result<RunnerC
     }
 
     let dest_labels: Vec<String> = destinations.iter().map(|d| d.menu_label()).collect();
-    let dest_idx = pick_one(
-        t(
-            "选择运行目标（模拟器 / 真机）",
-            "Select destination (simulator / device)",
-        ),
-        &dest_labels,
-    )?;
+    let default_dest_idx = destinations
+        .iter()
+        .position(|d| d.kind == DestinationKind::Device)
+        .unwrap_or(0);
+    let dest_idx = if is_interactive_tty() {
+        pick_one_with_default(
+            t(
+                "选择运行目标（模拟器 / 真机）",
+                "Select destination (simulator / device)",
+            ),
+            &dest_labels,
+            default_dest_idx,
+        )?
+    } else {
+        default_dest_idx
+    };
     let picked = &destinations[dest_idx];
 
     let bring_simulator = picked.kind == DestinationKind::Simulator;
@@ -86,8 +100,13 @@ pub fn configure_project(root: &Path, run_after: Option<bool>) -> Result<RunnerC
 
     let global_path = config.save(root)?;
     config.apply_locale();
-    if crate::tasks::should_refresh_project_tasks(&root.join(".zed/tasks.json")) {
-        write_zed_tasks(root, &project)?;
+    let tasks_root = project
+        .path
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| root.to_path_buf());
+    if crate::tasks::should_refresh_project_tasks(&tasks_root.join(".zed/tasks.json")) {
+        write_zed_tasks(&tasks_root, &project)?;
     }
     print_configure_success(&config, &global_path);
 

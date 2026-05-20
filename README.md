@@ -20,14 +20,15 @@ When listed in the catalog:
 ### 2. Dev Extension (before marketplace / latest from source)
 
 ```bash
-git clone https://github.com/buds520/ios-runner.git
+curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/install-dev.sh | bash
 ```
+
+Or clone the repo and run `./install-dev.sh`.
 
 1. Zed → **Extensions** → **Install Dev Extension** → select the **repo root** (must contain `extension.toml`)
 2. **File → Open Folder** → your iOS project
 
-Optional: build CLI from source — `cd ios-runner/crates && cargo install --path cli --locked`  
-Or use the bundled installer: `./scripts/install.sh` (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
+If the extension cannot install the CLI automatically, it prints the command above. See also `./scripts/install.sh` ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
 
 ---
 
@@ -60,6 +61,8 @@ curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/ins
 ```
 
 3. Quit Zed (**Cmd+Q**) and reopen, or reinstall the extension.
+
+**Optional:** `ios-runner switch` to change simulator/device; set `IOS_RUNNER_SKIP_IF_FRESH=1` to skip rebuild when sources are unchanged.
 
 ---
 

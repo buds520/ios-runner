@@ -142,7 +142,7 @@ fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::
     map.insert("reveal".into(), json!("always"));
     map.insert("hide".into(), json!("never"));
     map.insert("save".into(), json!("all"));
-    map.insert("use_new_terminal".into(), json!(true));
+    map.insert("use_new_terminal".into(), json!(false));
     // Zed 默认会打印「Task finished / Command: /bin/zsh -i -c …」，容易像报错
     map.insert("show_command".into(), json!(false));
     map.insert("show_summary".into(), json!(false));

@@ -1,10 +1,14 @@
 use std::io;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
+use walkdir::WalkDir;
 
+use crate::build_diagnostics::append_and_persist;
 use crate::build_settings::launch_artifacts;
 use crate::config::{ProjectKind, RunnerConfig};
 use crate::detect::DetectedProject;
@@ -15,7 +19,7 @@ use crate::destination::{
 use crate::device::{ensure_device_ready, report_devicectl_failure};
 use crate::simulator::{destination_for_simulator, list_simulators, udid_for_destination_name};
 use crate::locale::t;
-use crate::terminal_ui::{info, section, success, warn};
+use crate::terminal_ui::{info, print_project_context, section, success, warn};
 
 pub fn list_schemes(root: &Path, project: &DetectedProject) -> Result<Vec<String>> {
     let mut cmd = Command::new("xcodebuild");
@@ -90,6 +94,15 @@ pub fn resolve_packages(root: &Path, config: &RunnerConfig) -> Result<()> {
 
 pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
     config.validate(root)?;
+    print_project_context(config);
+
+    if should_skip_incremental_build(root, config)? {
+        success(t(
+            "✓ 源码未变化，跳过编译（设置 IOS_RUNNER_FORCE_BUILD=1 强制编译）",
+            "✓ Sources unchanged, skipping build (set IOS_RUNNER_FORCE_BUILD=1 to force)",
+        ));
+        return Ok(());
+    }
 
     section(
         t("编译", "Build"),
@@ -166,6 +179,133 @@ pub fn build_project(root: &Path, config: &RunnerConfig) -> Result<()> {
     result
 }
 
+fn build_for_run(root: &Path, config: &RunnerConfig) -> Result<()> {
+    if should_skip_incremental_build(root, config)? {
+        if launch_artifacts(root, config).is_ok() {
+            success(t(
+                "✓ 源码未变化，跳过编译",
+                "✓ Sources unchanged, skipping build",
+            ));
+            return Ok(());
+        }
+        warn(t(
+            "未找到 .app，将重新编译",
+            ".app not found, rebuilding",
+        ));
+        std::env::set_var("IOS_RUNNER_FORCE_BUILD", "1");
+    }
+    build_project(root, config)
+}
+
+fn force_build_requested() -> bool {
+    std::env::var("IOS_RUNNER_FORCE_BUILD")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
+fn skip_if_fresh_enabled() -> bool {
+    std::env::var("IOS_RUNNER_SKIP_IF_FRESH")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
+fn should_skip_incremental_build(root: &Path, config: &RunnerConfig) -> Result<bool> {
+    if force_build_requested() || !skip_if_fresh_enabled() {
+        return Ok(false);
+    }
+    detect_incremental_fresh(root, config)
+}
+
+/// Compare latest source mtime under `root` with newest xcactivitylog in DerivedData.
+pub fn detect_incremental_fresh(root: &Path, config: &RunnerConfig) -> Result<bool> {
+    let Some(source_mtime) = latest_source_mtime(root)? else {
+        return Ok(false);
+    };
+    let derived = config.derived_data_path(root);
+    let Some(log_mtime) = latest_xcactivitylog_mtime(&derived)? else {
+        return Ok(false);
+    };
+    Ok(source_mtime <= log_mtime)
+}
+
+fn walk_skip_dir(name: &str) -> bool {
+    matches!(
+        name,
+        "Pods" | "DerivedData" | ".build" | ".git" | ".ios-runner" | "node_modules"
+            | ".bluecode" | "xcuserdata"
+    )
+}
+
+fn latest_source_mtime(root: &Path) -> Result<Option<SystemTime>> {
+    let mut latest: Option<SystemTime> = None;
+    for entry in WalkDir::new(root)
+        .into_iter()
+        .filter_entry(|e| {
+            e.file_name()
+                .to_str()
+                .map(|n| !walk_skip_dir(n))
+                .unwrap_or(true)
+        })
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_dir() {
+            continue;
+        }
+        if path.file_name().is_some_and(|n| n == "Info.plist")
+            || path.extension().is_some_and(|e| e == "pbxproj")
+        {
+            continue;
+        }
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        if !matches!(
+            ext,
+            "swift" | "m" | "mm" | "h" | "c" | "cpp" | "metal" | "storyboard" | "xib"
+        ) {
+            continue;
+        }
+        if let Ok(mtime) = path.metadata().and_then(|m| m.modified()) {
+            latest = Some(match latest {
+                Some(prev) if mtime > prev => mtime,
+                Some(prev) => prev,
+                None => mtime,
+            });
+        }
+    }
+    Ok(latest)
+}
+
+fn latest_xcactivitylog_mtime(derived: &Path) -> Result<Option<SystemTime>> {
+    if !derived.is_dir() {
+        return Ok(None);
+    }
+    let logs = derived.join("Logs/Build");
+    if !logs.is_dir() {
+        return Ok(None);
+    }
+    let mut latest: Option<SystemTime> = None;
+    for entry in WalkDir::new(&logs).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        if path.extension().and_then(|e| e.to_str()) != Some("xcactivitylog") {
+            continue;
+        }
+        if path.metadata().map(|m| m.len()).unwrap_or(0) == 0 {
+            continue;
+        }
+        if let Ok(mtime) = path.metadata().and_then(|m| m.modified()) {
+            latest = Some(match latest {
+                Some(prev) if mtime > prev => mtime,
+                Some(prev) => prev,
+                None => mtime,
+            });
+        }
+    }
+    Ok(latest)
+}
+
 pub fn run_app(root: &Path, config: &RunnerConfig) -> Result<()> {
     if is_simulator_destination(&config.destination) {
         run_on_simulator(root, config)
@@ -175,7 +315,7 @@ pub fn run_app(root: &Path, config: &RunnerConfig) -> Result<()> {
 }
 
 pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
-    build_project(root, config)?;
+    build_for_run(root, config)?;
 
     let artifacts = launch_artifacts(root, config)?;
     let app_path = artifacts.app_path;
@@ -220,7 +360,7 @@ pub fn run_on_simulator(root: &Path, config: &RunnerConfig) -> Result<()> {
 }
 
 pub fn run_on_device(root: &Path, config: &RunnerConfig) -> Result<()> {
-    build_project(root, config)?;
+    build_for_run(root, config)?;
 
     let artifacts = launch_artifacts(root, config)?;
     let app_path = artifacts
@@ -444,10 +584,25 @@ fn run_xcodebuild_piped(mut cmd: Command, root: &Path) -> Result<()> {
         .spawn()
         .context("spawn xcbeautify")?;
 
+    let stderr_capture = Arc::new(Mutex::new(Vec::new()));
     if let Some(mut stderr) = xcodebuild.stderr.take() {
-        let mut err_out = io::stderr();
+        let cap = Arc::clone(&stderr_capture);
         std::thread::spawn(move || {
-            let _ = io::copy(&mut stderr, &mut err_out);
+            use std::io::{Read, Write};
+            let mut err_out = io::stderr();
+            let mut chunk = [0u8; 8192];
+            loop {
+                match stderr.read(&mut chunk) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        let _ = err_out.write_all(&chunk[..n]);
+                        if let Ok(mut guard) = cap.lock() {
+                            guard.extend_from_slice(&chunk[..n]);
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
         });
     }
 
@@ -457,6 +612,11 @@ fn run_xcodebuild_piped(mut cmd: Command, root: &Path) -> Result<()> {
     if xcode_status.success() && beauty_status.success() {
         Ok(())
     } else {
+        let stderr = stderr_capture
+            .lock()
+            .map(|b| String::from_utf8_lossy(&b).into_owned())
+            .unwrap_or_default();
+        let _ = append_and_persist(&stderr, "");
         bail!(
             "build failed (xcodebuild {:?}, xcbeautify {:?})",
             xcode_status.code(),

@@ -236,10 +236,10 @@ fn bail_invalid_destination(destination: &str, reason: &str) -> Result<()> {
         "{}",
         crate::locale::tf(
             || format!(
-                "运行目标（destination）无效：{reason}\n  当前值: {destination}\n  请执行: ios-runner configure --run\n  或在 Zed 中运行「iOS-Runner: Select Scheme & Device」重新选择模拟器/真机。",
+                "运行目标（destination）无效：{reason}\n  当前值: {destination}\n  请执行: ios-runner switch\n  或在 Zed 中运行「iOS-Runner: 选择 Scheme 与设备」重新选择模拟器/真机。",
             ),
             || format!(
-                "Invalid run destination: {reason}\n  Current: {destination}\n  Run: ios-runner configure --run\n  Or use the Zed task「iOS-Runner: Select Scheme & Device」.",
+                "Invalid run destination: {reason}\n  Current: {destination}\n  Run: ios-runner switch\n  Or use the Zed task「iOS-Runner: Select Scheme & Device」.",
             ),
         )
     )

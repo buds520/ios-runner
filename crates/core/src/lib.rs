@@ -6,6 +6,7 @@ mod global_store;
 mod global_tasks;
 mod zed_keymap;
 mod build_settings;
+mod build_diagnostics;
 mod config;
 mod configure;
 mod destination;
@@ -13,6 +14,7 @@ mod detect;
 mod ensure;
 mod prompt;
 mod simulator;
+mod switch;
 mod tasks;
 mod terminal_ui;
 mod uninstall;
@@ -34,12 +36,16 @@ pub use destination::{
     DestinationKind, RunDestination, is_placeholder_destination, is_simulator_destination,
     list_run_destinations, validate_xcodebuild_destination,
 };
-pub use detect::{DetectedProject, create_config, detect_project};
+pub use detect::{
+    DetectedProject, create_config, detect_project, filter_schemes_for_project, pick_default_scheme,
+};
 pub use ensure::{EnsureReport, ensure_project};
+pub use switch::switch_destination;
 pub use locale::{Lang, init_locale, lang, set_lang, t, tf};
 pub use util::has_xcbeautify;
 pub use simulator::{Simulator, list_simulators};
 pub use tasks::write_zed_tasks;
 pub use xcodebuild::{
-    build_project, list_schemes, resolve_packages, run_app, run_on_device, run_on_simulator,
+    build_project, detect_incremental_fresh, list_schemes, resolve_packages, run_app,
+    run_on_device, run_on_simulator,
 };

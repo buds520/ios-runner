@@ -9,7 +9,7 @@ use ios_runner_core::{
     ensure_project, global_tasks_json_pretty, global_zed_tasks_contain_legacy_scripts,
     init_locale, install_global_zed_keymap, install_global_zed_tasks, is_placeholder_destination,
     list_run_destinations, list_schemes, list_simulators, resolve_packages, run_app, t, tf,
-    uninstall_ios_runner, zed_config_dir, UninstallOptions,
+    switch_destination, uninstall_ios_runner, zed_config_dir, UninstallOptions,
 };
 
 mod mcp;
@@ -76,6 +76,11 @@ enum Commands {
         #[arg(long, default_value = "schemes")]
         what: String,
     },
+    /// Switch simulator/device (interactive) or list destinations
+    Switch {
+        #[arg(long)]
+        list: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -121,6 +126,7 @@ fn main() -> Result<()> {
             resolve_packages(&root, &config)
         }
         Commands::List { what } => cmd_list(&root, &what),
+        Commands::Switch { list } => switch_destination(&root, list),
     }
 }
 
