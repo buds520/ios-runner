@@ -2,45 +2,43 @@
 
 **English** · [**简体中文**](README.zh-CN.md)
 
-Build and run iOS Xcode projects from [Zed](https://zed.dev/) — similar idea to [SweetPad](https://sweetpad.hyzyla.dev/), but for Zed.
-
-Requires **macOS** and **Xcode**.
+Build and run iOS Xcode projects from [Zed](https://zed.dev/). Requires **macOS** and **Xcode**.
 
 ---
 
-## Install (new users)
+## Install
 
-1. Zed → **Extensions** → **iOS Runner** → **Install**
-2. **Open Folder** → your iOS project (directory with `.xcodeproj` or `.xcworkspace`)
-3. **Cmd+Shift+R** to run
+### 1. Zed Extensions (recommended)
 
-If the task list is empty:
+When listed in the catalog:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/install-cli.sh | bash
-```
+1. Zed → **Extensions** → search **iOS Runner** → **Install**
+2. **File → Open Folder** → your iOS project (folder with `.xcodeproj` or `.xcworkspace`)
 
-No need to clone this repository.
+**Marketplace status:** under review — [zed-industries/extensions#6145](https://github.com/zed-industries/extensions/pull/6145). Until merged, use **Dev Extension** (below) or install the CLI only (troubleshooting).
 
-### Developers (this repo)
+### 2. Dev Extension (before marketplace / latest from source)
 
 ```bash
 git clone https://github.com/buds520/ios-runner.git
-cd ios-runner && ./scripts/install.sh
 ```
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Sample app `XcodePilotDemo/` is for testing only.
+1. Zed → **Extensions** → **Install Dev Extension** → select the **repo root** (must contain `extension.toml`)
+2. **File → Open Folder** → your iOS project
+
+Optional: build CLI from source — `cd ios-runner/crates && cargo install --path cli --locked`  
+Or use the bundled installer: `./scripts/install.sh` (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
 
 ---
 
-## Quick start
+## Use (both install paths)
 
-1. **File → Open Folder** on the directory that contains your `.xcworkspace` or `.xcodeproj`  
-   (CocoaPods: run `pod install` first)
-2. First time: **Cmd+Shift+E** (Setup) or task **iOS-Runner: Setup Project**
-3. **Cmd+Shift+R** (Run) or task **iOS-Runner: Run**
-
-Pick scheme and simulator/device: **Cmd+Shift+I** or **iOS-Runner: Select Scheme & Device**.
+| Step | Action |
+|------|--------|
+| Open project | **File → Open Folder** on the directory with `.xcodeproj` / `.xcworkspace` (CocoaPods: run `pod install` first) |
+| First time | **Cmd+Shift+E** (Setup) or task **iOS-Runner: Setup Project** |
+| Run | **Cmd+Shift+R** or task **iOS-Runner: Run** |
+| Scheme / device | **Cmd+Shift+I** or **iOS-Runner: Select Scheme & Device** |
 
 | Shortcut | Action |
 |----------|--------|
@@ -48,77 +46,50 @@ Pick scheme and simulator/device: **Cmd+Shift+I** or **iOS-Runner: Select Scheme
 | Cmd+Shift+I | Select scheme & device |
 | Cmd+Shift+R | Build & run |
 
-Details: [docs/ZED_UX.md](docs/ZED_UX.md) · [docs/QUICKSTART.md](docs/QUICKSTART.md)
+Your project does **not** need `.zed/tasks.json` upfront — the extension writes global tasks under `~/.config/zed/tasks.json`.
 
 ---
 
-## Where settings live
+## If the task list is empty
 
-| Path | Purpose |
-|------|---------|
-| `~/.config/ios-runner/config.toml` | Scheme, destination, defaults (default — **not** in your repo) |
-| `~/.ios-runner/bin/ios-runner` | CLI installed by extension or `install-self` |
-| `~/.config/zed/tasks.json` | Global Zed tasks (`install-zed-tasks`) |
-
-Set `IOS_RUNNER_LOCAL_CONFIG=1` to also write `.ios-runner.toml` inside the project.
-
----
-
-## Troubleshooting
-
-**Run panel shows “No matches”**  
-Install the **iOS Runner** extension, **Open Folder** on your project, then:
+1. Confirm you used **Open Folder** on the project root (not a single file).
+2. Install or refresh the CLI (no clone required):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/install-cli.sh | bash
 ```
 
-New projects do not ship with `.zed/tasks.json` — tasks come from global `~/.config/zed/tasks.json`.
-
-**Duplicate tasks in the spawn menu**  
-Delete stale `<project>/.zed/tasks.json` and run `ios-runner ensure --quiet`, or reinstall global tasks with `ios-runner install-zed-tasks`.
-
-**CLI not ready / old task scripts**  
-Re-run `install-cli.sh` above, or quit Zed (Cmd+Q) and reinstall the extension.
-
-**Invalid destination / xcodebuild exit 64**  
-Run `ios-runner configure --run` and pick a real simulator or device.
-
-**Physical device**  
-Unlock the phone, trust the Mac, enable Developer Mode. Errors include Chinese/English hints when possible.
-
-**Terminal language**  
-`language = "en"` in `[defaults]` inside `config.toml`, or `export IOS_RUNNER_LANG=en`.
-
-**Uninstall**
-
-```bash
-ios-runner uninstall                      # CLI, Zed tasks/keymap, global config
-ios-runner uninstall --keep-config        # keep ~/.config/ios-runner/
-ios-runner uninstall --purge-derived-data # also remove build cache
-```
-
-Disable the Zed extension manually in **Extensions**.
+3. Quit Zed (**Cmd+Q**) and reopen, or reinstall the extension.
 
 ---
 
-## Demo project (maintainers only)
+## Config paths
 
-Minimal sample for testing: [XcodePilotDemo/](XcodePilotDemo/) — not the new-user onboarding path.
+| Path | Purpose |
+|------|---------|
+| `~/.config/ios-runner/config.toml` | Scheme, destination, defaults |
+| `~/.ios-runner/bin/ios-runner` | CLI (extension bootstrap or `install-cli.sh`) |
+| `~/.config/zed/tasks.json` | Global Zed tasks |
+
+`IOS_RUNNER_LOCAL_CONFIG=1` also writes `.ios-runner.toml` in the project.
+
+---
+
+## Troubleshooting
+
+**Duplicate tasks** — remove stale `<project>/.zed/tasks.json`, run `ios-runner ensure --quiet`.
+
+**xcodebuild exit 64** — `ios-runner configure --run` and pick a valid simulator or device.
+
+**Uninstall** — `ios-runner uninstall` (add `--keep-config` / `--purge-derived-data` as needed); disable the extension in Zed.
+
+More: [docs/NEW_USER.md](docs/NEW_USER.md) · [docs/ZED_UX.md](docs/ZED_UX.md)
 
 ---
 
-## Docs
+## Maintainers
 
-| Doc | Topic |
-|-----|--------|
-| [docs/NEW_USER.md](docs/NEW_USER.md) | New-user flow & troubleshooting |
-| [docs/QUICKSTART.md](docs/QUICKSTART.md) | Step-by-step first run |
-| [docs/ZED_UX.md](docs/ZED_UX.md) | Tasks, shortcuts, i18n |
-| [docs/PUBLISHING.md](docs/PUBLISHING.md) | Releases & Zed marketplace |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Hacking on this repo |
-
----
+Sample app [XcodePilotDemo/](XcodePilotDemo/) is for testing only. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) · [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ## License
 

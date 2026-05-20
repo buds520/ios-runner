@@ -6,57 +6,62 @@
 
 ---
 
-## 新用户（3 步）
+## 安装（二选一）
 
+### 方式一：扩展市场（推荐）
+
+Zed 收录后：
+
+1. **Cmd+Shift+P** → 输入 `extensions` → 打开扩展面板 → 搜索 **iOS Runner** → **安装**
+2. **File → Open Folder** → 你的 iOS 工程目录（含 `.xcodeproj` 或 `.xcworkspace` 的那一层）
+
+**上架状态：** 审核中 — [PR #6145](https://github.com/zed-industries/extensions/pull/6145)。合并前请用 **方式二**，或按下方「任务为空」安装 CLI。
+
+### 方式二：开发扩展（未上架 / 要用最新源码）
+
+```bash
+git clone https://github.com/buds520/ios-runner.git
 ```
-装扩展 → Open Folder（你的工程）→ Cmd+Shift+R
-```
+
+1. Zed → **Extensions** → **Install Dev Extension** → 选 **仓库根目录**（含 `extension.toml`，不要选 `XcodePilotDemo`）
+2. **File → Open Folder** → 你的工程
+
+可选：本机编译 CLI — `cd ios-runner/crates && cargo install --path cli --locked`  
+或执行 `./scripts/install.sh`（见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)）。
+
+---
+
+## 使用（两种方式相同）
 
 | 步骤 | 操作 |
 |------|------|
-| 1 | 打开 **Zed** → **Cmd+Shift+P** → 输入 **`extensions`** → 安装 **iOS Runner** |
-| 2 | **File → Open Folder** → 选择你的 iOS 工程目录（含 `.xcodeproj` 或 `.xcworkspace` 的那一层） |
-| 3 | **Cmd+Shift+R** 运行；首次可先 **Opt+Shift+T** → **iOS-Runner: 初始化项目** |
+| 打开工程 | **Open Folder** 到含 `.xcodeproj` / `.xcworkspace` 的目录（CocoaPods 请先 `pod install`） |
+| 首次 | **Cmd+Shift+E** 或任务 **iOS-Runner: 初始化项目** |
+| 运行 | **Cmd+Shift+R** 或任务 **iOS-Runner: 运行** |
+| 选设备 | **Cmd+Shift+I** 或 **iOS-Runner: 选择 Scheme 与设备** |
 
-CocoaPods 工程：请先在系统终端执行一次 `pod install`（Xcode 常规步骤）。
-
-扩展安装时会自动配置 CLI 和 Zed 全局任务。你的工程里**不会**预先带有 `.zed/tasks.json`，这很正常。
+工程里**可以没有** `.zed/tasks.json`，扩展会配置 `~/.config/zed/tasks.json` 全局任务。
 
 ---
 
 ## 任务面板是空的？
 
-先确认已 **Open Folder** 打开工程（不是只打开单个文件）。
-
-若仍无任务，在终端执行**一条命令**（无需 clone 本仓库）：
+1. 确认已 **Open Folder** 打开工程根目录（不是单个文件）。
+2. 终端执行（无需 clone 仓库）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/buds520/ios-runner/main/scripts/install-cli.sh | bash
 ```
 
-然后回到 Zed：**Open Folder** → 你的工程 → **Cmd+Shift+R**。
+3. **Cmd+Q** 退出 Zed 后重新打开，或重装扩展。
 
 ---
 
-## 快捷键
+## 维护者
 
-| 键 | 动作 |
-|----|------|
-| Cmd+Shift+R | 运行 |
-| Cmd+Shift+E | 初始化项目 |
-| Cmd+Shift+B | 编译 |
-| Cmd+Shift+I | 选 Scheme / 设备 |
-
----
-
-## 开发与测试本仓库
-
-维护者 clone 本仓库、跑 Demo 或改扩展代码，见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。  
-Demo 工程 `XcodePilotDemo/` **仅用于测试**，不是新用户入口。
-
----
+`XcodePilotDemo/` 仅用于测试。开发说明：[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) · 上架：[docs/PUBLISHING.md](docs/PUBLISHING.md)
 
 ## 链接
 
-- [新用户说明 / 排错](docs/NEW_USER.md)
+- [新用户 / 排错](docs/NEW_USER.md)
 - [GitHub](https://github.com/buds520/ios-runner)
