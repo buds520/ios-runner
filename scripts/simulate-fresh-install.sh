@@ -4,22 +4,19 @@
 # Usage:
 #   ./scripts/simulate-fresh-install.sh           # clean ~/.ios-runner, ~/.config/zed (iOS-Runner entries), etc.
 #   ./scripts/simulate-fresh-install.sh --build   # also remove crates/target (optional)
-#   ./scripts/simulate-fresh-install.sh --demo    # also reset demo local configs to git HEAD
 #
-# After this script: do NOT run any other install script. Continue entirely in Zed (see docs/NEW_USER.md).
+# After this script: do NOT run any other install script. Continue entirely in Zed (see README.zh-CN.md).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 DO_BUILD=0
-DO_DEMO=0
 for arg in "$@"; do
   case "$arg" in
     --build) DO_BUILD=1 ;;
-    --demo) DO_DEMO=1 ;;
     -h|--help)
-      sed -n '2,9p' "$0"
+      sed -n '2,8p' "$0"
       exit 0
       ;;
     *) echo "Unknown: $arg" >&2; exit 1 ;;
@@ -65,10 +62,6 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   rm -rf "$ROOT/crates/target" "$ROOT/target" "$ROOT/extension.wasm"
 fi
 
-# Restore shipped demo to git state (no committed .zed/tasks.json — same as real new user)
-git checkout HEAD -- XcodePilotDemo/.ios-runner.toml 2>/dev/null || true
-rm -rf XcodePilotDemo/.zed 2>/dev/null || true
-
 echo ""
 echo "✓ User state cleared (same as a new Mac). Do not run ios-runner or bootstrap scripts."
 echo ""
@@ -76,14 +69,14 @@ echo "Continue in Zed only (Zed 没有 Reload Window 命令):"
 echo ""
 echo "  扩展尚未安装:"
 echo "    1. Cmd+Shift+P → extensions → 安装 iOS Runner"
-echo "    2. Open Folder → XcodePilotDemo"
+echo "    2. Open Folder → 你的 iOS 工程"
 echo "    3. Opt+Shift+T → 初始化  或  Cmd+Shift+R"
 echo ""
 echo "  扩展已安装（刚清过本机配置）:"
 echo "    1. Cmd+Q 完全退出 Zed 再打开（或 Cmd+Shift+P → reload workspace）"
-echo "    2. Open Folder → XcodePilotDemo"
+echo "    2. Open Folder → 你的 iOS 工程"
 echo "    3. Opt+Shift+T → 初始化  或  Cmd+Shift+R"
 echo ""
 echo "  任务来自扩展写入的全局 ~/.config/zed/tasks.json（不是工程内 .zed/）。"
 echo ""
-echo "详见 docs/NEW_USER.md"
+echo "详见 README.zh-CN.md"

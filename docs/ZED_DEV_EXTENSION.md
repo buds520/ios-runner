@@ -22,7 +22,7 @@ rustup target add wasm32-wasip2
 
 ### 原因 3：选错目录
 
-**Install Dev Extension** 必须选择 **`iOS-Runner` 仓库根目录**（含 `extension.toml` 和 `src/lib.rs`），不要选 `XcodePilotDemo` 子目录。
+**Install Dev Extension** 必须选择 **`iOS-Runner` 仓库根目录**（含 `extension.toml` 和 `src/lib.rs`）。
 
 正确路径示例：
 

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-20
+
+### Removed
+- `XcodePilotDemo/` test project
+- Redundant docs: `QUICKSTART`, `NEW_USER`, `USER_EXPERIENCE`, `REVIEW_FIXES`, `OPTIMIZATION_PROPOSALS_REVIEW`
+- Legacy install scripts: `install-cli.sh`, `install.sh`, `bootstrap-zed-user.sh`
+
+### Changed
+- README simplified to two install paths (marketplace + local dev extension)
+- Doc links updated to `ZED_UX` / `ZED_DEV_EXTENSION`
+
 ## [0.3.0] - 2026-05-20
 
 ### Added

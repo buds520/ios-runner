@@ -62,10 +62,10 @@ ios-runner configure --run
 ### Zed Dev Extension
 
 ```bash
-./install-dev.sh   # 或 curl -fsSL .../install-dev.sh | bash
+git clone https://github.com/buds520/ios-runner.git && cd ios-runner && ./install-dev.sh
 ```
 
-见 [ZED_DEV_EXTENSION.md](ZED_DEV_EXTENSION.md)。选择**仓库根目录**（含 `extension.toml`），不要选 `XcodePilotDemo`。
+见 [ZED_DEV_EXTENSION.md](ZED_DEV_EXTENSION.md)。选择**仓库根目录**（含 `extension.toml`）。
 
 CLI 补充命令：`ios-runner switch`（切换设备）、`IOS_RUNNER_SKIP_IF_FRESH=1`（可选增量跳过编译）。
 

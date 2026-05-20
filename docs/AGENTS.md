@@ -6,10 +6,12 @@
 ios-runner/
 ├── extension.toml      # Zed 扩展清单
 ├── src/lib.rs          # WASM：bootstrap CLI、install-zed-tasks
+├── install-dev.sh      # 本地扩展一键安装
 ├── bin/                # 发布用 macOS CLI（aarch64 + x86_64）
 ├── crates/
 │   ├── core/           # detect, xcodebuild, config, tasks, global_store
 │   └── cli/            # ios-runner 可执行入口、mcp
+├── CocoaPodsDemo/      # CocoaPods 测试工程
 └── docs/
 ```
 
@@ -68,5 +70,5 @@ cargo build --target wasm32-wasip2 --release
 
 ## 文档入口
 
-- 用户：[README.zh-CN.md](../README.zh-CN.md)、[QUICKSTART.md](QUICKSTART.md)
-- 优化评估：[OPTIMIZATION_PROPOSALS_REVIEW.md](OPTIMIZATION_PROPOSALS_REVIEW.md)
+- 用户：[README.zh-CN.md](../README.zh-CN.md)、[ZED_UX.md](ZED_UX.md)
+- 开发：[DEVELOPMENT.md](DEVELOPMENT.md)、[PUBLISHING.md](PUBLISHING.md)、[ZED_DEV_EXTENSION.md](ZED_DEV_EXTENSION.md)

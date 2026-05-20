@@ -182,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "ios-runner-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "ios-runner-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "dirs",
