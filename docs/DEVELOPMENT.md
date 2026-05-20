@@ -91,7 +91,7 @@ PR / push 触发 `.github/workflows/ci.yml`。
 | 版本 | 内容 |
 |------|------|
 | v0.2.x | 全局配置、内置 CLI、destination 修复、uninstall |
-| v0.3 | 构建诊断、destination switch、更多测试 |
+| v0.3.0 | 构建诊断、switch、交互式 ensure、配置按工程文件路径绑定、install-dev |
 | 未来 | Zed 动态 tasks API 落地后减少手动 `install-zed-tasks` |
 
 ## 参考

@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-20
+
+### Added
+- `install-dev.sh` — one-shot Dev Extension setup (clone, build CLI, Zed tasks)
+- `ios-runner switch` / `switch --list` — quick destination change
+- Interactive `ensure` with scheme filtering and default highlighting (`pick_one_with_default`)
+- `print_project_context` before build; build failure diagnostics + `~/.ios-runner/logs/`
+- Opt-in incremental skip: `IOS_RUNNER_SKIP_IF_FRESH=1`; force with `IOS_RUNNER_FORCE_BUILD=1`
+- Global config cache (5s TTL, invalidated on save)
+
+### Fixed
+- Config keyed by `.xcworkspace`/`.xcodeproj` path (shared across different Open Folder parents)
+- `.zed/tasks.json` written beside the Xcode project file, not arbitrary worktree root
+- Zed tasks use in-panel output (`use_new_terminal: false`)
+- Dev Extension shows CLI install hint when bundled binary is unavailable
+- Invalid destination hints mention `ios-runner switch`
+
+### Changed
+- README: marketplace vs Dev Extension install paths
+- `TASKS_SCHEMA` → `tasks-v16-in-panel-terminal`
+
 ## [0.2.5] - 2026-05-20
 
 ### Added
