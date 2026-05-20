@@ -70,6 +70,39 @@ resolve_src_dir() {
   fi
 }
 
+ensure_cli_on_path() {
+  local bin_dir="${HOME}/.ios-runner/bin"
+  local path_line="export PATH=\"${bin_dir}:\$PATH\""
+  local updated=0
+
+  for rc in "${HOME}/.zprofile" "${HOME}/.zshrc" "${HOME}/.bash_profile"; do
+    [[ -f "${rc}" ]] || continue
+    if grep -qF '.ios-runner/bin' "${rc}" 2>/dev/null; then
+      continue
+    fi
+    {
+      echo ""
+      echo "# iOS Runner CLI"
+      echo "${path_line}"
+    } >>"${rc}"
+    updated=1
+  done
+
+  if [[ "${updated}" -eq 0 ]] && ! grep -qF '.ios-runner/bin' "${HOME}/.zprofile" 2>/dev/null; then
+    {
+      echo "# iOS Runner CLI"
+      echo "${path_line}"
+    } >>"${HOME}/.zprofile"
+    updated=1
+  fi
+
+  # shellcheck disable=SC2130
+  if [[ "${updated}" -eq 1 ]]; then
+    echo "→ Added ~/.ios-runner/bin to PATH (~/.zprofile or ~/.zshrc)"
+  fi
+  export PATH="${bin_dir}:${PATH}"
+}
+
 ensure_rust
 resolve_src_dir
 mkdir -p "${HOME}/.ios-runner/bin"
@@ -78,6 +111,7 @@ echo "→ Building CLI..."
 (cd "${SRC_DIR}/crates" && cargo build -q -p ios-runner-cli --release)
 cp "${SRC_DIR}/crates/target/release/ios-runner" "${INSTALL_BIN}"
 chmod +x "${INSTALL_BIN}"
+ensure_cli_on_path
 "${INSTALL_BIN}" install-zed-tasks --quiet
 
 echo ""

@@ -59,7 +59,7 @@ The script installs Rust if needed, builds the CLI, and writes Zed tasks.
 
 **Duplicate tasks** → Remove `<project>/.zed/tasks.json`, run `ios-runner ensure --quiet`.
 
-**Uninstall** → `ios-runner uninstall`, disable the extension in Zed.
+**Uninstall** → `~/.ios-runner/bin/ios-runner uninstall`, then disable the extension in Zed. (Use the full path if `ios-runner` is not on PATH; re-run `./install-dev.sh` to add it.)
 
 More: [docs/ZED_DEV_EXTENSION.md](docs/ZED_DEV_EXTENSION.md)
 

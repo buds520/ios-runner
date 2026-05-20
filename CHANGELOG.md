@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-05-20
+
+### Fixed
+- `install-dev.sh` adds `~/.ios-runner/bin` to shell PATH (`~/.zprofile` / `~/.zshrc`)
+
+### Changed
+- README: uninstall uses full path when CLI is not on PATH
+
 ## [0.3.5] - 2026-05-20
 
 ### Fixed
