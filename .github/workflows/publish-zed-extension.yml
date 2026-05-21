@@ -45,14 +45,14 @@ jobs:
 
       - name: Checkout ios-runner at tag
         if: steps.gate.outputs.enabled == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
           fetch-depth: 0
 
       - name: Checkout extensions fork
         if: steps.gate.outputs.enabled == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: buds520/extensions
           token: ${{ secrets.EXTENSIONS_DEPLOY_TOKEN }}
