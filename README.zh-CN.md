@@ -4,6 +4,8 @@
 
 在 [Zed](https://zed.dev/) 里编译、运行 **你自己的 Xcode 工程**（iOS / iPadOS / macOS，`xcodebuild` + 模拟器/真机/Mac）。
 
+把 Zed 当成一个轻量 Xcode 启动器：选择 scheme 和运行目标、编译、运行，并在编辑器里查看 App 日志。
+
 **环境要求：** macOS · Xcode · [Zed](https://zed.dev/)
 
 ---
@@ -11,7 +13,7 @@
 ## 快速开始
 
 ```
-装扩展 → Open Folder（你的 App 工程）→ Cmd+Shift+R
+装扩展 → 打开你的 App 工程目录 → Cmd+Shift+U → Cmd+Shift+R
 ```
 
 | 快捷键 | 动作 |
@@ -21,7 +23,15 @@
 | **Cmd+Shift+I** | 选 Scheme / 设备（不运行） |
 | **Cmd+Shift+U** | 初始化工程 |
 
-CocoaPods：先 `pod install`，Open Folder 到 **`.xcworkspace` 所在目录**。
+任务面板补充项：**iOS-Runner: 检查环境**、**Pod Install**（CocoaPods）、**编译（详细日志）**。
+
+### 应该打开哪个目录？
+
+| 工程类型 | Open Folder |
+|----------|-------------|
+| `.xcodeproj` | 包含 `.xcodeproj` 的目录 |
+| CocoaPods | 先 `pod install`，再打开包含 `.xcworkspace` 的目录 |
+| 本地开发扩展 | Install Dev Extension 选 `ios-runner` 仓库；Open Folder 选你的 App 仓库 |
 
 ---
 
@@ -53,15 +63,35 @@ git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-run
 
 ---
 
-## 常见问题
+## 排障流程
 
-**任务面板 No matches** → 确认 Open Folder 打开的是工程目录，再跑 `./install-dev.sh`。
+先在 Zed 任务面板运行 **iOS-Runner: 检查环境**，或执行：
+
+```bash
+ios-runner doctor
+```
+
+常见处理：
+
+| 现象 | 处理 |
+|------|------|
+| 任务面板 No matches | 打开你的 App 工程目录，然后运行 `ios-runner install-zed-tasks` |
+| CocoaPods 编译失败 | 运行 **iOS-Runner: Pod Install** 或 `pod install` |
+| 设备/模拟器换了 | 按 **Cmd+Shift+I** 或运行 `ios-runner switch` |
+| 真机签名失败 | 用 Xcode 打开工程 → Target → Signing & Capabilities → 选择 Team |
+| 需要完整日志 | 运行 **iOS-Runner: 编译（详细日志）** |
+
+---
+
+## 常见问题
 
 **重复任务** → 删工程内 `.zed/tasks.json`，执行 `ios-runner ensure --quiet`。
 
 **macOS 应用** → 与 iOS 相同快捷键；初始化后目标会显示「My Mac」，Cmd+Shift+R 编译并在本机启动。
 
 **任务面板开头一堆 `HOME=…`、`ZED_*=…`** → 那是 **Zed 任务终端**在注入工程环境时打印的变量列表（`ZED_ENVIRONMENT=worktree-shell`），不是 iOS Runner。可忽略或向上滚动；更新 Zed / 重装任务（`ios-runner install-zed-tasks`）后可能减轻。若只有 Zed Preview 出现，可向 Zed 反馈。
+
+**隐私** → iOS-Runner 使用本机 Apple 工具链，不上传工程数据。见 [Security and Privacy](docs/SECURITY_AND_PRIVACY.md)。
 
 **卸载** → `~/.ios-runner/bin/ios-runner uninstall`，Zed Extensions 里禁用插件。（CLI 不在 PATH 时用完整路径；重装 `./install-dev.sh` 后会写入 PATH）
 

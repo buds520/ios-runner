@@ -93,8 +93,7 @@ CLI 补充命令：`ios-runner switch`（切换设备）、`IOS_RUNNER_SKIP_IF_F
 ## 测试与 CI
 
 ```bash
-cd crates && cargo test --workspace
-cargo clippy --workspace -- -D warnings
+./scripts/preflight.sh
 ```
 
 PR / push 触发 `.github/workflows/ci.yml`。

@@ -37,6 +37,14 @@ echo "→ Sync embedded global Zed tasks for WASM extension"
 chmod +x "$ROOT/scripts/sync-extension-embeds.sh"
 "$ROOT/scripts/sync-extension-embeds.sh"
 
+if [[ "${IOS_RUNNER_SKIP_PREFLIGHT:-0}" != "1" ]]; then
+  echo "→ Preflight checks"
+  chmod +x "$ROOT/scripts/preflight.sh"
+  "$ROOT/scripts/preflight.sh"
+else
+  echo "→ IOS_RUNNER_SKIP_PREFLIGHT=1: skipped preflight checks"
+fi
+
 git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md bin/ src/embedded_global_tasks.json src/embedded_keymap_entry.json 2>/dev/null || true
 git add -u
 

@@ -61,9 +61,8 @@ else
 fi
 
 if command -v gh >/dev/null 2>&1; then
-  gh pr comment "$PR_NUMBER" \
-    --repo zed-industries/extensions \
-    --body "$(cat <<EOF
+  BODY="$(cat <<EOF
+<!-- ios-runner-release-update -->
 ## iOS-Runner ${VERSION}
 
 - Submodule: \`${SUB_SHA}\` ([buds520/ios-runner@${TAG}](https://github.com/buds520/ios-runner/releases/tag/${TAG}))
@@ -71,6 +70,18 @@ if command -v gh >/dev/null 2>&1; then
 
 Automated update from [buds520/ios-runner](https://github.com/buds520/ios-runner) release workflow.
 EOF
-)" || echo "⚠ Could not comment on PR #${PR_NUMBER} (check gh auth)"
+)"
+  COMMENT_ID="$(gh api "repos/zed-industries/extensions/issues/${PR_NUMBER}/comments" \
+    --jq '.[] | select(.body | contains("<!-- ios-runner-release-update -->")) | .id' \
+    | tail -n 1 || true)"
+  if [[ -n "$COMMENT_ID" ]]; then
+    gh api --method PATCH "repos/zed-industries/extensions/issues/comments/${COMMENT_ID}" \
+      -f body="$BODY" >/dev/null \
+      || echo "⚠ Could not update PR #${PR_NUMBER} release comment (check gh auth)"
+  else
+    gh pr comment "$PR_NUMBER" \
+      --repo zed-industries/extensions \
+      --body "$BODY" || echo "⚠ Could not comment on PR #${PR_NUMBER} (check gh auth)"
+  fi
   echo "PR: https://github.com/zed-industries/extensions/pull/${PR_NUMBER}"
 fi
