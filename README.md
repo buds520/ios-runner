@@ -13,24 +13,25 @@ Use Zed as a lightweight Xcode launcher: choose a scheme and destination, build,
 ## Quick start
 
 ```
-Install extension → Open your app folder → Cmd+Shift+U → Cmd+Shift+R
+Install extension → Open your app folder → use iOS-Runner tools in Zed Agent
 ```
 
 | Shortcut | Action |
 | -------- | ------ |
+| **Cmd+Shift+U** | Initialize Project |
 | **Cmd+Shift+R** | Run |
 | **Cmd+Shift+B** | Build |
-| **Cmd+Shift+I** | Scheme / device (save only, no run) |
-| **Cmd+Shift+U** | Set up project |
+| **Cmd+Shift+I** | Select Scheme & Destination (save only, no run) |
 
-Task panel extras: **iOS-Runner: Doctor**, **Pod Install** (CocoaPods), **Build (verbose)**.
+Global tasks after CLI task install: **Doctor**, **Initialize Project**, **Run**, **Select Scheme & Destination**, and **Build**.
+Project extras after opening or initializing an app project: **Pod Install** (CocoaPods), **Build (verbose)**, **Resolve Swift Packages**, and **Select Only (no run)**.
 
 ### Which folder should I open?
 
 | Project type | Open Folder |
 | ------------ | ----------- |
 | `.xcodeproj` | The directory that contains the `.xcodeproj` |
-| CocoaPods | Run `pod install`, then open the directory that contains the `.xcworkspace` |
+| CocoaPods | Open the app folder, run **iOS-Runner: Pod Install** or `pod install` to generate the `.xcworkspace`, then rerun Initialize Project or Run |
 | Local dev extension | Install Dev Extension from the `ios-runner` repo, then open your separate app repo |
 
 ---
@@ -39,9 +40,9 @@ Task panel extras: **iOS-Runner: Doctor**, **Pod Install** (CocoaPods), **Build 
 
 1. Zed → **Extensions** → search **iOS Runner** → Install
 2. **Open Folder** → your app project
-3. **Cmd+Shift+R**
+3. Open Zed Agent and use the iOS-Runner MCP tools
 
-No clone, no Rust.
+No clone, no Rust for Agent/MCP usage. Keyboard shortcuts and Run-panel tasks are installed by the CLI with `ios-runner install-zed-tasks`.
 
 ---
 
@@ -59,7 +60,7 @@ The script installs Rust if needed, builds the CLI, and writes Zed tasks.
 | ---- | ------ |
 | 1 | **Install Dev Extension** → select `~/ios-runner` (plugin source) |
 | 2 | **Cmd+Q** restart → **Open Folder** → your app project |
-| 3 | **Cmd+Shift+U** set up → **Cmd+Shift+R** run |
+| 3 | **Cmd+Shift+U** Initialize Project → **Cmd+Shift+R** Run |
 
 ---
 
@@ -75,10 +76,10 @@ Common fixes:
 
 | Symptom | Fix |
 | ------- | --- |
-| Task panel “No matches” | Open your app project folder, then run `ios-runner install-zed-tasks` |
-| CocoaPods build fails | Run **iOS-Runner: Pod Install** or `pod install` |
-| Device/simulator changed | Press **Cmd+Shift+I** or run `ios-runner switch` |
-| Device signing fails | Open the project in Xcode → Target → Signing & Capabilities → select a Team |
+| Task panel “No matches” | Open your app project folder, run **Cmd+Shift+U**, or run `ios-runner install-zed-tasks`; if the extension is not ready, fully quit and reopen Zed, then run Doctor |
+| CocoaPods workspace is missing | Run **iOS-Runner: Pod Install** or `pod install` to generate the `.xcworkspace`, then rerun Initialize Project or Run |
+| Destination changed or disappeared | Press **Cmd+Shift+I** or run `ios-runner switch` |
+| Physical-device signing fails | Open the project in Xcode → Target → Signing & Capabilities → select a Team |
 | Need full logs | Run **iOS-Runner: Build (verbose)** |
 
 ---

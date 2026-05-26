@@ -29,13 +29,9 @@ fi
 echo "→ Bump manifests to ${VERSION}"
 "$ROOT/scripts/bump-version.sh" "$VERSION"
 
-echo "→ Bundle macOS CLI into extension bin/ (offline install)"
-chmod +x "$ROOT/scripts/bundle-cli-for-extension.sh"
-"$ROOT/scripts/bundle-cli-for-extension.sh" "$VERSION"
-
-echo "→ Sync embedded global Zed tasks for WASM extension"
-chmod +x "$ROOT/scripts/sync-extension-embeds.sh"
-"$ROOT/scripts/sync-extension-embeds.sh"
+echo "→ Release readiness checks"
+chmod +x "$ROOT/scripts/check-release-readiness.sh"
+"$ROOT/scripts/check-release-readiness.sh" "$VERSION"
 
 if [[ "${IOS_RUNNER_SKIP_PREFLIGHT:-0}" != "1" ]]; then
   echo "→ Preflight checks"
@@ -45,7 +41,7 @@ else
   echo "→ IOS_RUNNER_SKIP_PREFLIGHT=1: skipped preflight checks"
 fi
 
-git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md bin/ src/embedded_global_tasks.json src/embedded_keymap_entry.json 2>/dev/null || true
+git add extension.toml Cargo.toml crates/Cargo.toml CHANGELOG.md 2>/dev/null || true
 git add -u
 
 if git diff --staged --quiet && git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -96,5 +92,9 @@ else
 fi
 
 echo ""
-echo "Done. CI will attach macOS CLI binaries to the GitHub Release."
-echo "Zed review PR: https://github.com/zed-industries/extensions/pull/${ZED_EXTENSIONS_PR:-6145}"
+echo "Done. CI will attach macOS CLI binaries to the GitHub Release; the Zed extension downloads the matching asset on demand."
+if [[ -n "${ZED_EXTENSIONS_PR:-}" ]]; then
+  echo "Zed review PR: https://github.com/zed-industries/extensions/pull/${ZED_EXTENSIONS_PR}"
+else
+  echo "Set ZED_EXTENSIONS_PR after opening the new Zed review PR if you want release comments."
+fi

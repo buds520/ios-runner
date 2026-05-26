@@ -17,19 +17,19 @@
 1. 刷新全局任务：`ios-runner install-zed-tasks`（或重载扩展）
 2. **删除工程内** `.zed/tasks.json`（会优先于全局任务，旧文件里常有 curl 下载脚本）
 3. 确认 CLI 正常：`ls -l ~/.ios-runner/bin/ios-runner`（应约 2MB，不是几十 KB）
-4. 重装 CLI：`cp ios-runner/bin/ios-runner-$(uname -m | sed 's/arm64/aarch64-apple-darwin/;s/x86_64/x86_64-apple-darwin/') ~/.ios-runner/bin/ios-runner` 或 `ios-runner install-self`
+4. 重装 CLI：在本仓库运行 `./install-dev.sh`，或执行当前 CLI 的 `ios-runner install-self`
 
-## CLI 安装（零配置）
+## Marketplace 扩展行为
 
-从市场安装扩展后，**首次加载**会把插件包里的 macOS CLI 复制到 `~/.ios-runner/bin/ios-runner`（**无需联网、无需 cargo**）。
+从市场安装扩展后，Zed 会在需要启动 MCP server 时从 GitHub Release 下载匹配的 macOS binary。扩展加载本身不写 `tasks.json`、`keymap.json`，也不向 `~/.ios-runner/bin` 复制文件。
 
 | 步骤 | 说明 |
 |------|------|
 | 装扩展 | Zed 扩展市场安装 **iOS Runner** |
-| 打开工程 | 扩展自动安装 CLI + 写入全局任务 |
-| 点 Run | 直接编译运行，任务里**不再** `curl` 下载 |
+| 打开工程 | Agent 面板可启动 iOS-Runner MCP tools |
+| 点 Run | 若要使用快捷键/Run 面板任务，先安装 CLI 并执行 `ios-runner install-zed-tasks` |
 
-仅当扩展包未含 `bin/`（例如裸 git 开发）时，扩展会回退从 GitHub Release 下载。
+本地开发时，`install-dev.sh` 仍会安装 CLI、写入任务和快捷键，适合日常手动测试。
 
 ## 全局配置（默认，不改工程目录）
 
@@ -77,8 +77,8 @@ ios-runner install-zed-tasks
 |--------|------|
 | **Cmd+Shift+R** | 运行 |
 | **Cmd+Shift+B** | 编译 |
-| **Cmd+Shift+I** | 选择 Scheme / 设备 |
-| **Cmd+Shift+U** | 初始化工程（ensure） |
+| **Cmd+Shift+I** | 选择 Scheme 与运行目标 |
+| **Cmd+Shift+U** | 初始化项目（ensure） |
 
 ### 2. Run 面板
 

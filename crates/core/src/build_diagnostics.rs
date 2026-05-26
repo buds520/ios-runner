@@ -63,8 +63,8 @@ pub fn diagnose_build_output(log: &str) -> Vec<String> {
     if lower.contains("unable to find a destination") || lower.contains("ineligible destination") {
         hints.push(
             t(
-                "运行目标无效：运行 ios-runner switch，或在 Zed 中运行「iOS-Runner: 选择 Scheme 与设备」",
-                "Invalid destination: run ios-runner switch, or use Zed task「iOS-Runner: Select Scheme & Device」",
+                "运行目标无效：运行 ios-runner switch，或在 Zed 中运行「iOS-Runner: 选择 Scheme 与运行目标」",
+                "Invalid destination: run ios-runner switch, or use Zed task「iOS-Runner: Select Scheme & Destination」",
             )
             .to_string(),
         );

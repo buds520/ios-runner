@@ -6,8 +6,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${1:-$(grep '^version = ' "$ROOT/extension.toml" | head -1 | sed 's/.*"\(.*\)".*/\1/')}"
 EXTENSIONS_DIR="${2:-${EXTENSIONS_REPO:-$HOME/extensions}}"
-BRANCH="${EXTENSIONS_BRANCH:-add-ios-runner}"
-PR_NUMBER="${ZED_EXTENSIONS_PR:-6145}"
+BRANCH="${EXTENSIONS_BRANCH:-add-ios-runner-v2}"
+PR_NUMBER="${ZED_EXTENSIONS_PR:-}"
 
 if [[ ! -d "$EXTENSIONS_DIR/.git" ]]; then
   echo "Extensions repo not found: $EXTENSIONS_DIR" >&2
@@ -60,7 +60,7 @@ else
   echo "✓ Pushed to origin/${BRANCH}"
 fi
 
-if command -v gh >/dev/null 2>&1; then
+if command -v gh >/dev/null 2>&1 && [[ -n "$PR_NUMBER" ]]; then
   BODY="$(cat <<EOF
 <!-- ios-runner-release-update -->
 ## iOS-Runner ${VERSION}
@@ -84,4 +84,6 @@ EOF
       --body "$BODY" || echo "⚠ Could not comment on PR #${PR_NUMBER} (check gh auth)"
   fi
   echo "PR: https://github.com/zed-industries/extensions/pull/${PR_NUMBER}"
+elif [[ -z "$PR_NUMBER" ]]; then
+  echo "No ZED_EXTENSIONS_PR set; skipped PR comment."
 fi

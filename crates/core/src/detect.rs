@@ -29,7 +29,9 @@ pub fn detect_project(root: &Path) -> Result<DetectedProject> {
                 has_package_swift,
             });
         }
-        bail!("Podfile found but no .xcworkspace. Run `pod install` to generate the workspace.");
+        bail!(
+            "Podfile found but no .xcworkspace. Run the Zed task `iOS-Runner: Pod Install` or `pod install` to generate the workspace, then rerun Initialize Project or Run from the app project folder."
+        );
     }
 
     if let Some(ws) = find_workspace(root, false)? {

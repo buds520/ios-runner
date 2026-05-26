@@ -47,8 +47,8 @@ pub const TASK_DEFS: &[TaskDef] = &[
     TaskDef {
         subcommand: "configure --no-run",
         target: TaskInstallTarget::Global,
-        label_zh: "选择 Scheme 与设备",
-        label_en: "Select Scheme & Device",
+        label_zh: "选择 Scheme 与运行目标",
+        label_en: "Select Scheme & Destination",
     },
     TaskDef {
         subcommand: "build",
@@ -142,6 +142,8 @@ pub fn project_tasks_file_has_global_duplicates(text: &str) -> bool {
         || text.contains("\"label\": \"iOS-Runner: Build\"")
         || text.contains("\"label\": \"iOS-Runner: 初始化项目\"")
         || text.contains("\"label\": \"iOS-Runner: 选择 Scheme 与设备\"")
+        || text.contains("\"label\": \"iOS-Runner: 选择 Scheme 与运行目标\"")
+        || text.contains("\"label\": \"iOS-Runner: Select Scheme & Destination\"")
 }
 
 fn zed_task_shell_fields(script: String) -> serde_json::Map<String, serde_json::Value> {
@@ -257,5 +259,21 @@ mod tests {
             .filter_map(|t| t.get("label").and_then(|l| l.as_str()))
             .collect();
         assert!(labels.contains(&"iOS-Runner: Doctor"));
+    }
+
+    #[test]
+    fn configure_task_uses_destination_language() {
+        let def = TASK_DEFS
+            .iter()
+            .find(|d| d.subcommand == "configure --no-run" && d.target == TaskInstallTarget::Global)
+            .expect("configure task");
+        assert_eq!(
+            task_label_for_def(def, Lang::En),
+            "iOS-Runner: Select Scheme & Destination"
+        );
+        assert_eq!(
+            task_label_for_def(def, Lang::ZhCn),
+            "iOS-Runner: 选择 Scheme 与运行目标"
+        );
     }
 }

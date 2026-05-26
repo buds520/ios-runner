@@ -69,8 +69,8 @@ jobs:
           cd extensions-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin add-ios-runner
-          git checkout add-ios-runner
+          git fetch origin add-ios-runner-v2
+          git checkout add-ios-runner-v2
 
           git submodule update --init extensions/ios-runner
           cd extensions/ios-runner
@@ -94,10 +94,10 @@ jobs:
           fi
 
           git commit -m "chore(ios-runner): bump to ${VERSION} (${SHA:0:7})"
-          git push origin add-ios-runner
+          git push origin add-ios-runner-v2
 
       - name: Comment on marketplace PR
-        if: steps.gate.outputs.enabled == 'true'
+        if: steps.gate.outputs.enabled == 'true' && vars.ZED_EXTENSIONS_PR != ''
         env:
           GH_TOKEN: ${{ secrets.EXTENSIONS_DEPLOY_TOKEN }}
           VERSION: ${{ steps.ver.outputs.version }}
@@ -114,12 +114,13 @@ jobs:
           _Updated by [ios-runner publish workflow](https://github.com/buds520/ios-runner/actions)._
           EOF
           )"
-          COMMENT_ID="$(gh api repos/zed-industries/extensions/issues/6145/comments \
+          PR_NUMBER="${{ vars.ZED_EXTENSIONS_PR }}"
+          COMMENT_ID="$(gh api "repos/zed-industries/extensions/issues/${PR_NUMBER}/comments" \
             --jq '.[] | select(.body | contains("<!-- ios-runner-release-update -->")) | .id' \
             | tail -n 1 || true)"
           if [[ -n "$COMMENT_ID" ]]; then
             gh api --method PATCH "repos/zed-industries/extensions/issues/comments/${COMMENT_ID}" \
               -f body="$BODY" >/dev/null
           else
-            gh pr comment 6145 --repo zed-industries/extensions --body "$BODY"
+            gh pr comment "$PR_NUMBER" --repo zed-industries/extensions --body "$BODY"
           fi

@@ -2,7 +2,7 @@
 
 [**English**](README.md) · **简体中文**
 
-在 [Zed](https://zed.dev/) 里编译、运行 **你自己的 Xcode 工程**（iOS / iPadOS / macOS，`xcodebuild` + 模拟器/真机/Mac）。
+在 [Zed](https://zed.dev/) 里编译、运行 **你自己的 Xcode 项目**（iOS / iPadOS / macOS，`xcodebuild` + 模拟器/真机/Mac）。
 
 把 Zed 当成一个轻量 Xcode 启动器：选择 scheme 和运行目标、编译、运行，并在编辑器里查看 App 日志。
 
@@ -13,24 +13,25 @@
 ## 快速开始
 
 ```
-装扩展 → 打开你的 App 工程目录 → Cmd+Shift+U → Cmd+Shift+R
+装扩展 → 打开你的 App 项目目录 → 在 Zed Agent 里使用 iOS-Runner 工具
 ```
 
 | 快捷键 | 动作 |
 |--------|------|
+| **Cmd+Shift+U** | 初始化项目 |
 | **Cmd+Shift+R** | 运行 |
 | **Cmd+Shift+B** | 编译 |
-| **Cmd+Shift+I** | 选 Scheme / 设备（不运行） |
-| **Cmd+Shift+U** | 初始化工程 |
+| **Cmd+Shift+I** | 选择 Scheme 与运行目标（不运行） |
 
-任务面板补充项：**iOS-Runner: 检查环境**、**Pod Install**（CocoaPods）、**编译（详细日志）**。
+CLI 写入任务后可用的全局任务：**检查环境**、**初始化项目**、**运行**、**选择 Scheme 与运行目标**、**编译**。
+打开或初始化 App 项目后的补充任务：**Pod Install**（CocoaPods）、**编译（详细日志）**、**解析 Swift Packages**、**仅选择（不运行）**。
 
 ### 应该打开哪个目录？
 
-| 工程类型 | Open Folder |
+| 项目类型 | Open Folder |
 |----------|-------------|
 | `.xcodeproj` | 包含 `.xcodeproj` 的目录 |
-| CocoaPods | 先 `pod install`，再打开包含 `.xcworkspace` 的目录 |
+| CocoaPods | 打开 App 项目目录，运行 **iOS-Runner: Pod Install** 或 `pod install` 生成 `.xcworkspace`，再重新初始化项目或运行 |
 | 本地开发扩展 | Install Dev Extension 选 `ios-runner` 仓库；Open Folder 选你的 App 仓库 |
 
 ---
@@ -38,16 +39,16 @@
 ## 方式一：扩展市场
 
 1. Zed → **Extensions** → 搜索 **iOS Runner** → Install
-2. **Open Folder** → 你的 App 工程
-3. **Cmd+Shift+R**
+2. **Open Folder** → 你的 App 项目
+3. 打开 Zed Agent，使用 iOS-Runner MCP 工具
 
-无需 clone、无需 Rust。
+Agent/MCP 用法无需 clone、无需 Rust。快捷键和 Run 面板任务由 CLI 执行 `ios-runner install-zed-tasks` 后写入。
 
 ---
 
 ## 方式二：本地扩展
 
-clone 放哪都行（如 `~/ios-runner`），**不要** clone 进 App 工程里。
+clone 放哪都行（如 `~/ios-runner`），**不要** clone 进 App 项目里。
 
 ```bash
 git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-runner && ./install-dev.sh
@@ -58,8 +59,8 @@ git clone https://github.com/buds520/ios-runner.git ~/ios-runner && cd ~/ios-run
 | 步骤 | 在 Zed 里做什么 |
 |------|----------------|
 | 1 | **Install Dev Extension** → 选 `~/ios-runner`（插件目录） |
-| 2 | **Cmd+Q** 重启 → **Open Folder** → 你的 App 工程 |
-| 3 | **Cmd+Shift+U** 初始化 → **Cmd+Shift+R** 运行 |
+| 2 | **Cmd+Q** 重启 → **Open Folder** → 你的 App 项目 |
+| 3 | **Cmd+Shift+U** 初始化项目 → **Cmd+Shift+R** 运行 |
 
 ---
 
@@ -75,9 +76,9 @@ ios-runner doctor
 
 | 现象 | 处理 |
 |------|------|
-| 任务面板 No matches | 打开你的 App 工程目录，然后运行 `ios-runner install-zed-tasks` |
-| CocoaPods 编译失败 | 运行 **iOS-Runner: Pod Install** 或 `pod install` |
-| 设备/模拟器换了 | 按 **Cmd+Shift+I** 或运行 `ios-runner switch` |
+| 任务面板 No matches | 打开你的 App 项目目录，按 **Cmd+Shift+U**；也可运行 `ios-runner install-zed-tasks`。如果扩展尚未就绪，完全退出并重新打开 Zed，再运行检查环境 |
+| CocoaPods workspace 缺失 | 运行 **iOS-Runner: Pod Install** 或 `pod install` 生成 `.xcworkspace`，再重新初始化项目或运行 |
+| 运行目标换了或失效 | 按 **Cmd+Shift+I** 或运行 `ios-runner switch` |
 | 真机签名失败 | 用 Xcode 打开工程 → Target → Signing & Capabilities → 选择 Team |
 | 需要完整日志 | 运行 **iOS-Runner: 编译（详细日志）** |
 
@@ -85,7 +86,7 @@ ios-runner doctor
 
 ## 常见问题
 
-**重复任务** → 删工程内 `.zed/tasks.json`，执行 `ios-runner ensure --quiet`。
+**重复任务** → 删项目内 `.zed/tasks.json`，执行 `ios-runner ensure --quiet`。
 
 **macOS 应用** → 与 iOS 相同快捷键；初始化后目标会显示「My Mac」，Cmd+Shift+R 编译并在本机启动。
 

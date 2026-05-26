@@ -11,17 +11,23 @@ cd /Users/xj/Documents/iOS-Runner
 # 1. 本地 extensions 仓库（fork）
 export EXTENSIONS_REPO="$HOME/extensions"   # 默认 ~/extensions
 
-# 2. 发布（需 macOS）：改版本 → 编译 CLI 打入 bin/ → commit → tag → push → Release → 更新审核 PR
+# 2. 发布：改版本 → commit → tag → push → Release assets → 更新审核 PR
 chmod +x scripts/*.sh
 ./scripts/release.sh 0.2.2
 ```
 
-`release.sh` 会调用 `bundle-cli-for-extension.sh`，把 `ios-runner-aarch64-apple-darwin` / `x86_64` 放进仓库 `bin/`，随 Zed 扩展一起分发，用户**无需**首次联网下载 CLI。
+`release.sh` 不再把 macOS CLI 二进制提交进扩展仓库。Zed 扩展按需从 GitHub Release 下载匹配的 MCP server binary，这更贴近 Zed MCP extension 的常见发布方式，也避免 registry PR 携带平台二进制。
 
 仅本地打 tag、不推送：
 
 ```bash
 ./scripts/release.sh 0.2.0 --no-push
+```
+
+发布脚本会在打 commit/tag 前执行 release-readiness 检查，确认 `extension.toml`、`Cargo.toml`、`crates/Cargo.toml` 和 `CHANGELOG.md` 的版本一致。也可以单独运行：
+
+```bash
+./scripts/check-release-readiness.sh 0.2.0
 ```
 
 不更新 Zed extensions PR：
@@ -40,7 +46,7 @@ chmod +x scripts/*.sh
 
 | 事件 | 工作流 | 作用 |
 |------|--------|------|
-| 推送 tag `v*` | `release-cli.yml` | 构建并上传 macOS CLI 到 GitHub Release |
+| 推送 tag `v*` | `release-cli.yml` | 构建并上传 macOS MCP server binary 到 GitHub Release |
 | 推送 tag `v*` | `publish-zed-extension.yml` | 更新 `buds520/extensions` 的 submodule + 在 PR 留言 |
 
 ### 配置仓库 Secret（仅需一次）
@@ -62,6 +68,22 @@ git push origin main
 
 也可在 Actions 里手动运行 **Publish Zed Extension**，填写版本号。
 
+## 发布前 Smoke Test
+
+默认 CocoaPods demo smoke 覆盖 `doctor`、`ensure`、`switch --list` 和 CocoaPods workspace 路径：
+
+```bash
+./scripts/smoke-test-demo.sh
+```
+
+如果当前机器已安装 Xcode、xcodegen、CocoaPods，并允许真实 build，再跑一次带编译的 smoke：
+
+```bash
+IOS_RUNNER_SMOKE_BUILD=1 ./scripts/smoke-test-demo.sh
+```
+
+如果 demo 提示缺少 `.xcworkspace`，先运行 **iOS-Runner: Pod Install** 或 `pod install`，生成 workspace 后重新初始化项目或运行。
+
 ## 版本号出现在哪
 
 | 文件 | 用途 |
@@ -73,9 +95,10 @@ git push origin main
 
 `scripts/bump-version.sh` 会同步改 ios-runner 仓库内的 manifest。
 
-## 首次上架 extensions（已完成）
+## 首次上架 extensions
 
 ```bash
+git checkout -B add-ios-runner-v2 upstream/main
 git submodule add https://github.com/buds520/ios-runner.git extensions/ios-runner
 ```
 
@@ -89,7 +112,9 @@ version = "0.2.0"
 
 ```bash
 pnpm sort-extensions
-gh pr create --title "Add ios-runner extension"
+git commit -m "Add ios-runner extension"
+git push -u origin add-ios-runner-v2
+gh pr create --repo zed-industries/extensions --head buds520:add-ios-runner-v2 --title "Add ios-runner extension"
 ```
 
 合并后在 [zed.dev/extensions](https://zed.dev/extensions) 搜索 **iOS-Runner**。

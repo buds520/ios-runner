@@ -321,9 +321,8 @@ dependencies = [
 
 [[package]]
 name = "ios-runner-extension"
-version = "0.3.8"
+version = "0.3.10"
 dependencies = [
- "serde_json",
  "zed_extension_api",
 ]
 

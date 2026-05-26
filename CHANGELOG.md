@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Changed
+- Standardized first-run docs and task naming around `Initialize Project` and `Select Scheme & Destination`.
+- Doctor output now groups blockers, warnings, passing checks, and next steps for easier repair in Zed task terminals.
+- Release preflight now checks version metadata and changelog presence without requiring bundled extension binaries.
+- Marketplace extension startup no longer writes Zed task/keymap files or copies a CLI into the user home directory.
+
+### Fixed
+- CocoaPods missing-workspace guidance now points to `iOS-Runner: Pod Install` or `pod install`, then rerunning Initialize Project or Run.
+
 ## [0.3.10] - 2026-05-21
 
 ### Added

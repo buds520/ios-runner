@@ -13,8 +13,8 @@ echo "== Unit tests =="
 echo "== Clippy =="
 (cd "$ROOT/crates" && cargo clippy --workspace --all-targets -- -D warnings)
 
-echo "== Extension embeds =="
-"$ROOT/scripts/sync-extension-embeds.sh" --check
+echo "== Release readiness metadata =="
+"$ROOT/scripts/check-release-readiness.sh"
 
 echo "== Shell syntax =="
 for script in "$ROOT"/scripts/*.sh; do
