@@ -18,8 +18,8 @@ jobs:
         working-directory: crates
         run: cargo fmt --check
 
-      - name: Check extension embeds
-        run: ./scripts/sync-extension-embeds.sh --check
+      - name: Release readiness
+        run: ./scripts/check-release-readiness.sh
 
       - name: Test
         working-directory: crates
